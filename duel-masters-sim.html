@@ -1,0 +1,2863 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>デュエルマスターズシミュレーター</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Kaisei+Decol:wght@400;700&family=Noto+Sans+JP:wght@400;700;900&display=swap');
+:root{--nat:#22cc55;--drk:#aa44ff;--mul:#cc2288;--bg:#06060f;--panel:#0e0e1c;--bdr:#1e1a30;--txt:#eeeeff;--muted:#6a5e88;--gold:#ffcc00;--gold2:#ffaa00;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif;height:100vh;overflow:hidden;}
+
+/* ── 画面管理 ── */
+#scr-title,#scr-coin,#scr-game{position:fixed;inset:0;display:none;flex-direction:column;}
+#scr-title.on,#scr-coin.on,#scr-game.on{display:flex;}
+
+/* ── タイトルボタン行 ── */
+.t-btn-row{display:flex;gap:10px;margin:8px 0;}
+.t-sub-btn{padding:8px 18px;border-radius:8px;border:1px solid rgba(255,255,255,.25);background:rgba(255,255,255,.07);color:rgba(255,255,255,.75);font-size:.68rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:all .15s;}
+.t-sub-btn:hover{background:rgba(255,204,0,.15);border-color:var(--gold);color:var(--gold);}
+#t-deck-display{cursor:pointer;transition:all .15s;}
+#t-deck-display:hover{border-color:var(--gold);}
+
+/* ── 共通モーダルベース ── */
+#card-list-modal,#deck-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:800;align-items:center;justify-content:center;}
+#card-list-modal.open,#deck-modal.open{display:flex;}
+#clm-inner,#dm-inner{background:#0a0a1a;border:1px solid var(--gold);border-radius:12px;padding:16px;max-width:440px;width:96%;max-height:88vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 32px rgba(255,204,0,.2);animation:mdIn .18s ease;overflow:hidden;}
+.modal-title{font-size:.82rem;font-weight:900;color:var(--gold);letter-spacing:.06em;flex-shrink:0;}
+.modal-close-btn{padding:6px 18px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.2);border-radius:18px;color:rgba(255,255,255,.5);font-size:.62rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;align-self:center;flex-shrink:0;}
+.modal-close-btn:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ── カード一覧 ── */
+#clm-list{flex:1;overflow-y:auto;display:flex;flex-wrap:wrap;gap:6px;padding:4px;}
+#clm-list::-webkit-scrollbar{width:3px;}
+#clm-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);}
+.clm-card{width:58px;height:80px;border-radius:5px;border:1px solid rgba(255,255,255,.15);overflow:hidden;cursor:pointer;flex-shrink:0;transition:transform .15s;position:relative;}
+.clm-card:hover{transform:scale(1.1);z-index:2;}
+.clm-card img{width:100%;height:100%;object-fit:cover;display:block;}
+.clm-card-icon{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:1rem;background:#10071e;}
+.clm-card-name{position:absolute;bottom:0;left:0;right:0;font-size:.32rem;background:rgba(0,0,0,.8);color:#eee;padding:1px 2px;text-align:center;line-height:1.3;}
+
+/* ── デッキ管理 ── */
+#dm-saved-list{display:flex;flex-direction:column;gap:4px;flex-shrink:0;max-height:120px;overflow-y:auto;}
+#dm-saved-list::-webkit-scrollbar{width:3px;}
+.dm-saved-item{display:flex;align-items:center;gap:6px;padding:6px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:6px;}
+.dm-saved-name{flex:1;font-size:.65rem;color:#eee;}
+.dm-saved-count{font-size:.56rem;color:rgba(255,255,255,.4);}
+.dm-load-btn{padding:3px 8px;border-radius:5px;border:1px solid var(--gold);color:var(--gold);background:rgba(255,204,0,.08);font-size:.55rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+.dm-load-btn:hover{background:rgba(255,204,0,.2);}
+.dm-del-btn{padding:3px 6px;border-radius:5px;border:1px solid rgba(255,80,80,.4);color:rgba(255,120,120,.8);background:rgba(255,60,60,.06);font-size:.55rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+.dm-del-btn:hover{background:rgba(255,60,60,.2);}
+#dm-editor{flex:1;display:flex;flex-direction:column;gap:8px;min-height:0;border-top:1px solid rgba(255,255,255,.08);padding-top:8px;}
+#dm-editor-header{display:flex;gap:6px;flex-shrink:0;}
+#dm-deck-name{flex:1;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#eee;font-size:.65rem;padding:6px 10px;font-family:'Noto Sans JP',sans-serif;}
+#dm-editor-header button{padding:6px 12px;background:rgba(255,204,0,.1);border:1px solid var(--gold);border-radius:6px;color:var(--gold);font-size:.62rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;}
+#dm-editor-header button:hover{background:rgba(255,204,0,.25);}
+#dm-editor-cards{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:3px;}
+#dm-editor-cards::-webkit-scrollbar{width:3px;}
+#dm-editor-cards::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);}
+.dm-card-row{display:flex;align-items:center;gap:8px;padding:4px 6px;background:rgba(255,255,255,.03);border-radius:5px;border:1px solid rgba(255,255,255,.07);}
+.dm-card-img{width:28px;height:38px;object-fit:cover;border-radius:3px;flex-shrink:0;}
+.dm-card-icon{width:28px;height:38px;display:flex;align-items:center;justify-content:center;font-size:.7rem;background:#10071e;border-radius:3px;flex-shrink:0;}
+.dm-card-info{flex:1;min-width:0;}
+.dm-card-n{font-size:.6rem;font-weight:700;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.dm-card-c{font-size:.5rem;color:rgba(255,255,255,.35);}
+.dm-qty{display:flex;align-items:center;gap:4px;flex-shrink:0;}
+.dm-qty button{width:22px;height:22px;border-radius:4px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.06);color:#eee;font-size:.7rem;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.dm-qty button:hover{background:rgba(255,204,0,.2);border-color:var(--gold);}
+.dm-qty-val{font-size:.65rem;font-weight:700;color:var(--gold);min-width:14px;text-align:center;}
+#scr-title{align-items:center;justify-content:center;background:radial-gradient(ellipse 100% 80% at 50% 50%,#120828,var(--bg));overflow:hidden;}
+#scr-title::before{content:'';position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 60% 40% at 20% 80%,rgba(34,204,85,.12),transparent 60%),radial-gradient(ellipse 60% 40% at 80% 20%,rgba(170,68,255,.12),transparent 60%);}
+.t-logo{position:relative;z-index:1;text-align:center;margin-bottom:28px;}
+.t-sub{font-size:.7rem;letter-spacing:.3em;color:var(--muted);margin-bottom:8px;}
+.t-main{font-family:'Kaisei Decol',serif;font-size:2.2rem;font-weight:700;letter-spacing:.1em;background:linear-gradient(135deg,#ffcc00,#ff8800 40%,#22cc55 70%,#aa44ff);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;filter:drop-shadow(0 0 16px rgba(255,170,0,.35));line-height:1.25;margin-bottom:4px;}
+.t-en{font-size:.7rem;letter-spacing:.2em;color:var(--muted);}
+.t-deck{position:relative;z-index:1;text-align:center;margin-bottom:28px;}
+.t-deck-icons{font-size:1.6rem;margin-bottom:8px;}
+.t-deck-badge{display:inline-block;font-size:.82rem;font-weight:700;color:var(--nat);border:1px solid rgba(34,204,85,.4);background:rgba(34,204,85,.08);border-radius:20px;padding:5px 18px;}
+.t-start{position:relative;z-index:1;padding:13px 44px;border-radius:50px;border:2px solid var(--gold);font-family:'Kaisei Decol',serif;font-size:1.05rem;font-weight:700;letter-spacing:.15em;color:#000;background:linear-gradient(135deg,var(--gold2),var(--gold));cursor:pointer;transition:all .2s;box-shadow:0 0 24px rgba(255,204,0,.25),0 4px 12px rgba(0,0,0,.5);}
+.t-start:hover{transform:scale(1.05) translateY(-2px);box-shadow:0 0 40px rgba(255,204,0,.45);}
+.t-test{position:fixed;bottom:20px;right:20px;z-index:2;padding:8px 18px;border-radius:20px;border:1px solid #666;background:rgba(255,255,255,.06);color:#aaa;font-size:.68rem;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .18s;letter-spacing:.05em;}
+.t-test:hover{border-color:#ff9900;color:#ff9900;background:rgba(255,153,0,.1);}
+/* テストモード中のバッジ */
+#test-badge{display:none;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:999;background:#ff6600;color:#fff;font-size:.6rem;font-weight:900;padding:3px 14px;border-radius:20px;letter-spacing:.08em;pointer-events:none;}
+#test-badge.on{display:block;}
+
+/* ── コイン ── */
+#scr-coin{align-items:center;justify-content:center;gap:18px;background:rgba(0,0,0,.96);}
+.c-head{font-family:'Kaisei Decol',serif;font-size:1.2rem;color:var(--gold);text-shadow:0 0 18px rgba(255,204,0,.5);}
+#c-icon{font-size:3.5rem;}
+.c-spin{animation:cSpin .45s ease-in-out infinite;}
+@keyframes cSpin{0%,100%{transform:scaleX(1)}50%{transform:scaleX(.1)}}
+#c-result{font-family:'Kaisei Decol',serif;font-size:1.8rem;font-weight:700;min-height:2.4rem;}
+#c-sub{font-size:.8rem;color:var(--muted);text-align:center;line-height:1.8;min-height:3rem;}
+#c-go{padding:10px 30px;border-radius:8px;border:1px solid var(--gold);color:var(--gold);background:rgba(255,204,0,.1);font-family:'Noto Sans JP',sans-serif;font-size:.85rem;font-weight:700;cursor:pointer;display:none;}
+#c-go:hover{background:rgba(255,204,0,.25);}
+
+/* ── ゲーム ── */
+#scr-game{flex-direction:column;overflow:visible;background:radial-gradient(ellipse 120% 100% at 50% 60%,#1a3a1a 0%,#0d200d 40%,#060e06 100%);}
+#g-header{display:flex;align-items:center;justify-content:space-between;padding:4px 10px;border-bottom:1px solid rgba(255,255,255,.08);background:rgba(0,0,0,.55);flex-shrink:0;gap:8px;height:36px;}
+#g-home-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);border-radius:6px;color:#aaa;font-size:.72rem;padding:2px 7px;cursor:pointer;transition:all .15s;}
+#g-home-btn:hover{border-color:var(--gold);color:var(--gold);}
+#g-header h1{font-family:'Kaisei Decol',serif;font-size:.82rem;color:var(--gold);text-shadow:0 0 10px rgba(255,204,0,.4);letter-spacing:.08em;flex:1;text-align:center;}
+.g-hright{display:flex;align-items:center;gap:8px;}
+.g-turn{font-size:.65rem;color:rgba(255,255,255,.5);}
+.g-turn span{color:var(--gold);font-weight:700;}
+.g-fbadge{font-size:.56rem;font-weight:700;padding:2px 7px;border-radius:10px;border:1px solid;}
+.fb-you{border-color:#ee7766;color:#ee7766;}
+.fb-opp{border-color:#aa77ee;color:#aa77ee;}
+#zm-actions{display:flex;flex-direction:column;gap:4px;}
+
+/* ── ボードレイアウト ── */
+#g-board{display:flex;flex:1;min-height:0;overflow:hidden;}
+#g-field{display:flex;flex-direction:column;flex:1;min-height:0;}
+.field-row{display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.row-ohand{height:30px;padding:1px 4px;}
+.row-mana{height:52px;gap:3px;overflow:visible;padding:2px 4px;}
+.row-oshield{height:52px;gap:4px;padding:2px 4px;}
+.row-bzone{flex:1;min-height:0;overflow:visible;padding:2px 4px;}
+.row-mshield{height:52px;gap:4px;padding:2px 4px;}
+#g-hand{flex-shrink:0;height:150px;background:linear-gradient(0deg,rgba(0,0,0,.92),rgba(0,0,0,.5));border-top:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;align-items:center;padding:0 8px 4px;overflow:visible;position:relative;z-index:10;}
+.mzone{flex-shrink:0;display:flex;flex-wrap:wrap;justify-content:center;gap:3px;padding:2px;}
+.mc{width:36px;height:50px;border-radius:5px;border:1.5px solid;overflow:hidden;position:relative;transition:transform .18s,opacity .18s;flex-shrink:0;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+.row-mana{height:60px;gap:3px;overflow:visible;padding:2px 4px;}
+#g-centerline{display:flex;align-items:center;gap:4px;padding:0 4px;flex-shrink:0;height:22px;}
+
+/* ── 相手手札（右上・扇状） ── */
+#ohand-area{position:fixed;top:44px;right:8px;z-index:5;pointer-events:none;}
+#ohand-badge{background:rgba(0,0,0,.75);border:1px solid rgba(170,119,238,.5);border-radius:8px;padding:5px 10px;color:rgba(200,170,255,.9);font-size:.62rem;font-weight:700;text-align:center;line-height:1.5;}
+#ohand{display:flex;align-items:flex-start;justify-content:flex-end;}
+
+
+/* ── マナゾーン（カード画像） ── */
+.mc img{width:100%;height:100%;object-fit:cover;border-radius:2px;display:block;}
+.mc.mn{border-color:var(--nat);}
+.mc.md{border-color:var(--drk);}
+.mc.mm{border-color:var(--mul);}
+.mc.mnd{border-color:#557766;}
+.mc.mt{transform:rotate(90deg);opacity:.65;}
+.mc-tap-overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);border-radius:2px;}
+.phase-label{font-size:.6rem;font-weight:700;color:rgba(255,255,255,.75);letter-spacing:.06em;white-space:nowrap;text-align:center;min-width:60px;}
+.grave-btn{padding:2px 5px;border-radius:5px;border:1px solid rgba(255,100,100,.4);background:rgba(255,80,80,.08);color:rgba(255,150,150,.8);font-size:.5rem;cursor:pointer;flex-shrink:0;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:1px;}
+.grave-btn span{font-size:.48rem;font-weight:700;color:rgba(255,180,180,.9);}
+.grave-btn:hover{background:rgba(255,80,80,.2);border-color:rgba(255,120,120,.7);}
+
+/* ターン終了ボタン（センターライン内） */
+#btn-end-turn{padding:3px 10px;border-radius:10px;border:2px solid #cc7700;background:linear-gradient(180deg,#c85e00,#7a3000);color:#fff;font-size:.58rem;font-weight:900;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .18s;box-shadow:0 2px 8px rgba(0,0,0,.5);flex-shrink:0;}
+#btn-end-turn:hover{background:linear-gradient(180deg,#e06a00,#8a3800);box-shadow:0 3px 12px rgba(200,100,0,.4);}
+#btn-end-turn.opp-turn{background:linear-gradient(180deg,#252525,#151515);border-color:#333;color:#444;cursor:not-allowed;}
+.field-row{display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.field-lbl{font-size:.44rem;color:rgba(255,255,255,.4);margin-left:6px;white-space:nowrap;}
+
+.bzone{width:100%;height:100%;border:1px dashed;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:nowrap;padding:4px;box-sizing:border-box;overflow:visible;}
+.bz-y{border-color:rgba(255,200,100,.25);background:rgba(255,180,50,.04);}
+.bz-o{border-color:rgba(150,100,255,.25);background:rgba(130,80,255,.04);}
+.bzone:empty::before{content:attr(data-empty);color:rgba(255,255,255,.18);font-size:.55rem;}
+.bzone .card{width:58px;height:80px;flex-shrink:1;}
+
+.divr{flex:1;height:1px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.15),transparent);}
+.pbtn{padding:3px 12px;border-radius:14px;font-size:.58rem;font-weight:700;border:1px solid rgba(255,255,255,.3);color:rgba(255,255,255,.7);background:rgba(255,255,255,.07);cursor:pointer;transition:all .2s;white-space:nowrap;font-family:'Noto Sans JP',sans-serif;}
+.pbtn:hover{background:rgba(255,255,255,.15);border-color:var(--gold);color:var(--gold);}
+
+.mn{background:rgba(34,204,85,.25);border-color:var(--nat);color:#77ee99;}
+.md{background:rgba(170,68,255,.25);border-color:var(--drk);color:#cc88ff;}
+.mm{background:rgba(204,34,136,.25);border-color:var(--mul);color:#ff77cc;}
+.mnd{background:linear-gradient(to right,rgba(34,204,85,.4) 50%,rgba(170,68,255,.4) 50%);border-color:#557766;color:#aaffcc;font-size:.34rem !important;}
+.mt{transform:rotate(18deg);opacity:.35;}
+
+/* ── サイドバー ── */
+#g-sidebar{display:flex;flex-direction:column;border-left:1px solid rgba(255,255,255,.07);background:rgba(0,0,0,.5);overflow:hidden;gap:2px;}
+
+/* ── ターン終了ボタン（HS風） ── */
+#btn-end-turn{margin:8px 8px 2px;padding:0;height:64px;border-radius:12px;border:2px solid #cc7700;background:linear-gradient(180deg,#c85e00 0%,#7a3000 100%);color:#fff;font-size:.7rem;font-weight:900;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .2s;box-shadow:0 4px 12px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.2),0 0 0 1px rgba(200,100,0,.3);letter-spacing:.05em;text-shadow:0 1px 3px rgba(0,0,0,.9);line-height:1.4;flex-shrink:0;}
+#btn-end-turn:hover:not(.opp-turn){background:linear-gradient(180deg,#e06a00 0%,#8a3800 100%);transform:translateY(-2px);box-shadow:0 6px 18px rgba(200,100,0,.5),inset 0 1px rgba(255,255,255,.25);border-color:#ee9900;}
+#btn-end-turn.opp-turn{background:linear-gradient(180deg,#252525,#151515);border-color:#333;color:#444;cursor:not-allowed;box-shadow:none;transform:none;}
+
+/* ── アクションボタン ── */
+#g-acts{display:flex;flex-direction:column;gap:3px;padding:3px 5px;}
+#g-selinfo{font-size:.46rem;color:rgba(255,255,255,.3);text-align:center;padding:1px 0;min-height:11px;}
+.abtn{width:100%;padding:5px 4px;border-radius:6px;border:1px solid;font-size:.58rem;font-weight:700;cursor:pointer;transition:all .16s;font-family:'Noto Sans JP',sans-serif;}
+.abtn:disabled{opacity:.2;cursor:not-allowed;}
+.a-sum{border-color:#55cc55;color:#88ff88;background:rgba(85,204,85,.1);}
+.a-sum:not(:disabled):hover{background:rgba(85,204,85,.22);}
+.a-mna{border-color:var(--nat);color:#77ee99;background:rgba(34,204,85,.08);}
+.a-mna:not(:disabled):hover{background:rgba(34,204,85,.2);}
+.a-atk{border-color:#dd6622;color:#ffaa66;background:rgba(221,102,34,.1);}
+.a-atk:not(:disabled):hover{background:rgba(221,102,34,.22);}
+
+/* ── ログ ── */
+#g-log{flex:1;display:flex;flex-direction:column;overflow:hidden;min-height:0;}
+#log-toggle{width:100%;padding:4px 6px;background:rgba(255,204,0,.05);border:none;border-top:1px solid rgba(255,255,255,.07);border-bottom:1px solid rgba(255,255,255,.07);color:var(--gold);font-size:.56rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;text-align:left;}
+#log-toggle:hover{background:rgba(255,204,0,.12);}
+.log-badge{display:inline-block;background:#ff4422;color:#fff;border-radius:8px;padding:0 4px;font-size:.48rem;font-weight:900;margin-left:3px;vertical-align:middle;}
+#g-loginner{flex:1;overflow-y:auto;padding:3px;display:none;}
+#g-loginner::-webkit-scrollbar{width:2px;}
+#g-loginner::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);}
+.log-open #g-loginner{display:block;}
+.log-closed #g-loginner{display:none;}
+.logtitle{font-size:.5rem;letter-spacing:.1em;color:rgba(255,255,255,.3);text-align:center;margin-bottom:2px;}
+.le{font-size:.54rem;padding:2px 3px;margin-bottom:1px;border-radius:3px;border-left:2px solid;line-height:1.4;}
+.ls{border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.4);}
+.la{border-color:#ff4422;color:#ff9988;background:rgba(255,68,34,.04);}
+
+/* ── カード基本 ── */
+.card{width:52px;height:72px;border-radius:7px;border:2px solid;padding:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;cursor:pointer;transition:transform .16s,box-shadow .16s;position:relative;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,.6);}
+.card:hover{transform:translateY(-8px) scale(1.1);z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.7);}
+.card.sel{box-shadow:0 0 0 2px var(--gold),0 8px 24px rgba(255,204,0,.5);transform:translateY(-10px) scale(1.12);z-index:40;}
+.card.tap{transform:rotate(18deg);}
+.card.tap.sel{transform:rotate(18deg) translateY(-4px) scale(1.06);}
+.card.sealed{opacity:.3;filter:grayscale(.9);}
+.card.sealed::before{content:'🔒';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.2rem;z-index:2;}
+.card.sick{opacity:.42;filter:brightness(.65);}
+.card.sick::after{content:'酔';position:absolute;bottom:2px;left:2px;font-size:.4rem;color:#ff8888;background:rgba(0,0,0,.7);border-radius:2px;padding:0 2px;line-height:1.4;}
+.cn{background:linear-gradient(160deg,#0d2210,#193219);border-color:#2a7a2a;box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.05);}
+.cd{background:linear-gradient(160deg,#10071e,#1e0e34);border-color:#6622aa;box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.05);}
+.cl{background:linear-gradient(160deg,#1e1e0e,#2a2a16);border-color:#aaaa22;box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.05);}
+.cm{background:linear-gradient(to bottom,#0d2210 0%,#0d2210 50%,#10071e 50%,#10071e 100%);border-color:#2a7a2a;border-bottom-color:#6622aa;position:relative;}
+.cm::before{content:'';position:absolute;left:0;right:0;top:50%;height:1px;background:linear-gradient(to right,#2a7a2a,#6622aa);pointer-events:none;z-index:1;}
+.cname{font-size:.38rem;text-align:center;line-height:1.2;color:rgba(255,255,255,.85);word-break:break-all;max-height:26px;overflow:hidden;}
+.ccost{position:absolute;top:1px;left:2px;font-size:.62rem;font-weight:900;color:var(--gold);text-shadow:0 1px 4px #000;}
+.cpow{font-size:.44rem;font-weight:700;background:rgba(0,0,0,.7);border-radius:3px;padding:1px 3px;color:#fff;align-self:flex-end;}
+
+/* ── 手札（扇形HS風） ── */
+#g-hlbl{font-size:.46rem;color:rgba(255,255,255,.3);letter-spacing:.08em;flex-shrink:0;}
+#g-hcards{display:flex;align-items:flex-end;justify-content:flex-start;flex:1;overflow-x:auto;overflow-y:visible;padding:0 8px 0;position:relative;width:100%;scrollbar-width:thin;scrollbar-color:rgba(255,255,255,.2) transparent;}
+#g-hcards::-webkit-scrollbar{height:3px;}
+#g-hcards::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);border-radius:2px;}
+#g-hcards .card{width:72px;height:100px;margin:0 2px;flex-shrink:0;transition:transform .2s,box-shadow .2s;transform-origin:bottom center;}
+#g-hcards .card:hover{transform:translateY(-28px) scale(1.12) !important;z-index:50;box-shadow:0 12px 30px rgba(0,0,0,.8),0 0 20px rgba(255,200,50,.3);}
+#g-hcards .card.sel{transform:translateY(-32px) scale(1.15) !important;z-index:60;box-shadow:0 0 0 2px var(--gold),0 12px 32px rgba(255,204,0,.5);}
+
+/* ── シールド ── */
+.shields{display:flex;justify-content:center;gap:3px;flex-shrink:0;}
+.sh{width:34px;height:46px;border-radius:5px;border:2px solid rgba(100,100,180,.5);background:linear-gradient(135deg,#12122a,#1c1c3a);display:flex;align-items:center;justify-content:center;font-size:.85rem;transition:all .2s;overflow:hidden;position:relative;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+.sh-i{border-color:rgba(120,120,220,.7);box-shadow:0 2px 8px rgba(80,80,200,.3),0 0 12px rgba(80,80,200,.15);padding:0;}
+.sh-i img{width:100%;height:100%;object-fit:cover;border-radius:3px;display:block;}
+.sh-b{background:rgba(20,5,5,.5);border-color:rgba(80,20,20,.6);opacity:.35;}
+.sh-p{animation:shPop .45s ease;}
+@keyframes shPop{0%{transform:scale(1)}50%{transform:scale(1.25);box-shadow:0 0 20px rgba(255,68,34,.8)}100%{transform:scale(1)}}
+
+
+/* ── 手札カードのアクションオーバーレイ（fixed位置） ── */
+#card-action-popup{position:fixed;display:none;flex-direction:column;gap:3px;z-index:500;pointer-events:auto;}
+#card-action-popup.open{display:flex;}
+.cact-btn{padding:5px 8px;border-radius:6px;border:1px solid;font-size:.6rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;transition:all .15s;text-align:center;box-shadow:0 2px 8px rgba(0,0,0,.8);}
+.cact-sum{border-color:#55cc55;color:#88ff88;background:rgba(0,18,0,.95);}
+.cact-sum:hover{background:rgba(30,160,30,.4);}
+.cact-mna{border-color:#22aa55;color:#66ee99;background:rgba(0,18,0,.95);}
+.cact-mna:hover{background:rgba(20,130,60,.4);}
+.cact-spell{border-color:#8833ee;color:#bb77ff;background:rgba(8,0,18,.95);}
+.cact-spell:hover{background:rgba(80,20,180,.4);}
+.cact-prev{border-color:rgba(255,255,255,.2);color:rgba(255,255,255,.5);background:rgba(0,0,0,.9);}
+.cact-prev:hover{border-color:var(--gold);color:var(--gold);}
+
+/* ── 効果選択ポップアップ ── */
+#eff-popup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:300;align-items:center;justify-content:center;}
+#eff-popup.open{display:flex;}
+#eff-popup-inner{background:#0e0c1e;border:2px solid var(--gold);border-radius:12px;padding:20px 18px;max-width:300px;width:88%;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:0 0 40px rgba(255,204,0,.3);animation:mdIn .18s ease;}
+#eff-title{font-size:.82rem;font-weight:900;color:var(--gold);text-align:center;letter-spacing:.06em;}
+#eff-desc{font-size:.68rem;color:#bbb;text-align:center;line-height:1.6;white-space:pre-wrap;}
+#eff-btns{display:flex;flex-direction:column;gap:8px;width:100%;}
+.eff-btn{padding:9px 14px;border-radius:8px;border:1px solid var(--bdr);background:rgba(255,255,255,.04);color:#eee;font-size:.7rem;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:background .15s,border-color .15s;text-align:left;line-height:1.5;}
+.eff-btn:hover{background:rgba(255,204,0,.14);border-color:var(--gold);color:var(--gold);}
+.eff-btn.yes{border-color:#88ff88;color:#88ff88;}
+.eff-btn.yes:hover{background:rgba(136,255,136,.12);}
+.eff-btn.no{border-color:#888;color:#888;}
+.eff-btn.no:hover{background:rgba(255,255,255,.07);color:#aaa;}
+#eff-confirm:disabled{opacity:.3;cursor:not-allowed;}
+#eff-confirm:not(:disabled):hover{background:rgba(255,204,0,.25);}
+
+/* ── カード選択ポップアップ ── */
+#card-sel-popup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:400;align-items:center;justify-content:center;}
+#card-sel-popup.open{display:flex;}
+#csp-inner{background:#0e0c1e;border:2px solid var(--gold);border-radius:12px;padding:16px;max-width:420px;width:96%;max-height:88vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 40px rgba(255,204,0,.25);animation:mdIn .18s ease;}
+#csp-title{font-size:.82rem;font-weight:900;color:var(--gold);letter-spacing:.06em;}
+#csp-desc{font-size:.65rem;color:#aaa;line-height:1.5;white-space:pre-wrap;}
+#csp-cards{display:flex;flex-wrap:wrap;gap:6px;overflow-y:auto;max-height:200px;padding:4px;}
+#csp-cards::-webkit-scrollbar{width:3px;}
+#csp-cards::-webkit-scrollbar-thumb{background:var(--bdr);}
+.csp-card{width:52px;height:72px;border-radius:5px;border:2px solid var(--bdr);cursor:pointer;overflow:hidden;position:relative;transition:all .15s;flex-shrink:0;}
+.csp-card img{width:100%;height:100%;object-fit:cover;}
+.csp-card-icon{width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#eee;background:linear-gradient(135deg,#1a1a3a,#0e0c1e);}
+.csp-card-name{position:absolute;bottom:0;left:0;right:0;font-size:.36rem;background:rgba(0,0,0,.75);color:#eee;padding:1px 2px;text-align:center;line-height:1.3;}
+.csp-card.selected{border-color:var(--gold);box-shadow:0 0 10px rgba(255,204,0,.6);transform:translateY(-4px) scale(1.06);}
+.csp-card.skip-btn{background:rgba(255,255,255,.04);border-color:#666;display:flex;align-items:center;justify-content:center;font-size:.52rem;color:#aaa;width:auto;padding:0 8px;}
+.csp-card.skip-btn:hover{border-color:#aaa;color:#eee;}
+#csp-preview{display:none;}
+#csp-prev-img img{width:44px;height:60px;object-fit:cover;border-radius:4px;}
+#csp-prev-img .no-img{width:44px;height:60px;background:rgba(255,255,255,.05);border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;}
+#csp-prev-info{flex:1;display:flex;flex-direction:column;gap:3px;}
+#csp-prev-name{font-size:.65rem;font-weight:700;color:var(--gold);}
+#csp-prev-eff{font-size:.58rem;color:#aaa;line-height:1.5;}
+#csp-footer{display:flex;gap:8px;}
+#csp-cancel{flex:1;padding:7px;background:rgba(255,255,255,.04);border:1px solid #666;border-radius:8px;color:#aaa;font-size:.65rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+#csp-cancel:hover{border-color:#aaa;color:#eee;}
+#csp-confirm{flex:2;padding:7px;background:rgba(255,204,0,.12);border:1px solid var(--gold);border-radius:8px;color:var(--gold);font-size:.65rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:background .15s;}
+#csp-confirm:hover:not(:disabled){background:rgba(255,204,0,.25);}
+#csp-confirm:disabled{opacity:.35;cursor:not-allowed;}
+
+@keyframes mdIn{from{opacity:0;transform:scale(.88)}to{opacity:1;transform:scale(1)}}
+/* ── ログボタン（センターライン） ── */
+#log-btn{padding:3px 8px;border-radius:10px;font-size:.58rem;font-weight:700;border:1px solid rgba(255,255,255,.25);color:rgba(255,255,255,.6);background:rgba(255,255,255,.07);cursor:pointer;transition:all .2s;font-family:'Noto Sans JP',sans-serif;flex-shrink:0;}
+#log-btn:hover{background:rgba(255,204,0,.15);border-color:var(--gold);color:var(--gold);}
+
+/* ── ログモーダル ── */
+#log-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:350;align-items:flex-start;justify-content:flex-start;padding:60px 0 0 0;}
+
+/* ── カードプレビューモーダル ── */
+#card-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:900;align-items:center;justify-content:center;}
+#card-modal.open{display:flex;}
+#card-modal-inner{background:#0e0c1e;border:1px solid var(--gold);border-radius:10px;padding:12px;max-width:320px;width:92%;display:flex;flex-direction:column;align-items:center;gap:8px;box-shadow:0 0 32px rgba(255,204,0,.25);animation:mdIn .2s ease;}
+#cm-img-wrap img{width:280px;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.6);}
+#cm-img-wrap img{width:180px;border-radius:8px;box-shadow:0 4px 18px rgba(0,0,0,.6);}
+#cm-img-wrap.no-img{width:180px;min-height:90px;background:rgba(255,255,255,.04);border:1px solid var(--bdr);border-radius:8px;display:flex;align-items:center;justify-content:center;}
+#cm-name{font-size:.82rem;font-weight:900;color:var(--gold);text-align:center;}
+#cm-cost{font-size:.68rem;color:var(--muted);}
+#cm-eff{font-size:.65rem;color:#ccc;line-height:1.6;text-align:center;max-width:260px;}
+#cm-close{padding:5px 18px;background:rgba(255,204,0,.1);border:1px solid var(--gold);border-radius:18px;color:var(--gold);font-size:.62rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+#cm-close:hover{background:rgba(255,204,0,.22);}
+
+/* ── 墓地・マナ閲覧モーダル ── */
+#zone-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;align-items:center;justify-content:center;}
+#zone-modal.open{display:flex;}
+#zone-modal-inner{background:#0e0c1e;border:1px solid var(--bdr);border-radius:10px;padding:14px;max-width:360px;width:94%;max-height:80vh;display:flex;flex-direction:column;gap:8px;box-shadow:0 0 24px rgba(0,0,0,.6);animation:mdIn .18s ease;}
+#zm-title{font-size:.78rem;font-weight:900;color:var(--gold);letter-spacing:.06em;}
+#zm-actions{display:flex;flex-direction:column;gap:4px;}
+#zm-list{overflow-y:auto;flex:1;display:flex;flex-direction:column;gap:4px;}
+#zm-list::-webkit-scrollbar{width:3px;}
+#zm-list::-webkit-scrollbar-thumb{background:var(--bdr);}
+.zm-row{display:flex;align-items:center;gap:8px;padding:5px 6px;border-radius:5px;background:rgba(255,255,255,.03);border:1px solid var(--bdr);cursor:pointer;transition:background .15s;}
+.zm-row:hover{background:rgba(255,204,0,.08);border-color:var(--gold);}
+.zm-row img{width:28px;height:38px;object-fit:cover;border-radius:3px;flex-shrink:0;}
+.zm-row-icon{width:28px;height:38px;border-radius:3px;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:.9rem;}
+.zm-info{flex:1;min-width:0;}
+.zm-name{font-size:.62rem;font-weight:700;color:#eee;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.zm-sub{font-size:.55rem;color:var(--muted);}
+.zm-btns{display:flex;flex-direction:column;gap:3px;flex-shrink:0;}
+.zm-btn{padding:3px 7px;border-radius:5px;border:1px solid;font-size:.55rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;white-space:nowrap;transition:background .15s;}
+.zm-btn-rush{border-color:#ff6699;color:#ff6699;background:rgba(255,102,153,.07);}
+.zm-btn-rush:hover{background:rgba(255,102,153,.22);}
+.zm-btn-spell{border-color:#aa44ff;color:#aa44ff;background:rgba(170,68,255,.07);}
+.zm-btn-spell:hover{background:rgba(170,68,255,.22);}
+#zm-close{padding:5px 18px;background:rgba(255,204,0,.1);border:1px solid var(--gold);border-radius:18px;color:var(--gold);font-size:.62rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;align-self:center;}
+#zm-close:hover{background:rgba(255,204,0,.22);}
+#log-modal.open{display:flex;}
+#log-modal-inner{background:#0a0a1a;border:1px solid rgba(255,255,255,.12);border-radius:10px;margin:0 0 0 12px;width:320px;max-height:70vh;display:flex;flex-direction:column;box-shadow:0 8px 32px rgba(0,0,0,.8);animation:mdIn .18s ease;overflow:hidden;}
+#log-modal-title{font-size:.65rem;font-weight:700;color:var(--gold);padding:8px 12px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0;}
+#g-loglist{flex:1;overflow-y:auto;padding:6px 8px;}
+#g-loglist::-webkit-scrollbar{width:3px;}
+#g-loglist::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);}
+#log-modal-inner button{margin:6px 8px;padding:4px 16px;border-radius:16px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.05);color:rgba(255,255,255,.5);font-size:.58rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;align-self:center;flex-shrink:0;}
+#log-modal-inner button:hover{border-color:var(--gold);color:var(--gold);}
+
+.zone-btns{display:flex;flex-direction:column;gap:3px;padding:4px 6px;}
+.zone-btn{padding:5px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.7);font-size:.58rem;font-family:'Noto Sans JP',sans-serif;cursor:pointer;text-align:left;transition:all .15s;}
+.zone-btn:hover{background:rgba(255,255,255,.12);border-color:var(--gold);color:var(--gold);}
+.zone-btn span{float:right;color:var(--gold);font-weight:700;}
+.deck-counts{display:flex;justify-content:space-around;padding:2px 6px;font-size:.52rem;color:rgba(255,255,255,.35);}
+/* ── 場を見る：戻るボタン ── */
+#field-view-btn{display:none;position:fixed;left:50%;transform:translateX(-50%);z-index:800;padding:6px 20px;background:rgba(0,0,0,.92);border:2px solid var(--gold);border-radius:20px;color:var(--gold);font-size:.65rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.6);letter-spacing:.04em;white-space:nowrap;}
+#field-view-btn.open{display:block;}
+
+#scr-result{position:fixed;inset:0;z-index:900;background:rgba(0,0,0,.92);display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+#scr-result.on{display:flex;}
+.rb{background:var(--panel);border:1px solid var(--bdr);border-radius:12px;padding:28px 32px;text-align:center;max-width:300px;}
+.rt{font-family:'Kaisei Decol',serif;font-size:1.7rem;margin-bottom:8px;}
+.rs{font-size:.76rem;color:var(--muted);margin-bottom:18px;line-height:1.6;}
+.rbtn{padding:9px 26px;border-radius:7px;border:1px solid var(--gold);color:var(--gold);background:rgba(255,204,0,.1);font-size:.8rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;}
+.rbtn:hover{background:rgba(255,204,0,.25);}
+
+/* エフェクト */
+.fxfl{position:fixed;inset:0;pointer-events:none;z-index:700;background:rgba(255,68,34,.16);animation:fxflA .4s ease forwards;}
+@keyframes fxflA{0%{opacity:1}100%{opacity:0}}
+.fxft{position:fixed;font-family:'Kaisei Decol',serif;font-size:1.3rem;font-weight:700;pointer-events:none;z-index:700;animation:fxftA 1.2s ease forwards;text-shadow:0 2px 8px #000;}
+@keyframes fxftA{0%{opacity:1;transform:translateY(0) scale(1)}80%{opacity:.8;transform:translateY(-50px) scale(1.1)}100%{opacity:0;transform:translateY(-70px) scale(.9)}}
+</style>
+</head>
+<body>
+
+<!-- タイトル -->
+<div id="scr-title" class="on">
+  <div class="t-logo">
+    <div class="t-sub">Trading Card Game</div>
+    <div class="t-main">デュエルマスターズ<br>シミュレーター</div>
+    <div class="t-en">DUEL MASTERS SIMULATOR</div>
+  </div>
+  <div class="t-deck" id="t-deck-display" onclick="openDeckModal()">
+    <div class="t-deck-icons" id="t-deck-icons">🌿🌑🌿🌑</div>
+    <div class="t-deck-badge" id="t-deck-badge">黒緑アビス（40枚）</div>
+    <div style="font-size:.5rem;color:rgba(255,255,255,.3);margin-top:2px;">タップしてデッキ変更</div>
+  </div>
+  <div class="t-btn-row">
+    <button class="t-sub-btn" onclick="openCardListModal()">📋 カード一覧</button>
+    <button class="t-sub-btn" onclick="openDeckModal()">📦 デッキ</button>
+  </div>
+  <button class="t-start" onclick="startCoin()">デュエル開始</button>
+  <button class="t-test" onclick="startTest()">🔧 テストモード</button>
+</div>
+
+<!-- コイントス -->
+<div id="scr-coin">
+  <div class="c-head">先攻・後攻を決定中...</div>
+  <div id="c-icon" class="c-spin">🪙</div>
+  <div id="c-result"></div>
+  <div id="c-sub"></div>
+  <button id="c-go" onclick="startGame()">ゲームスタート！</button>
+</div>
+
+<!-- ゲーム -->
+<div id="scr-game">
+  <div id="test-badge">🔧 テストモード：マナコスト0</div>
+  <div id="g-header">
+    <button id="g-home-btn" onclick="goTitle()">🏠</button>
+    <h1>⚔️ デュエルマスターズシミュレーター</h1>
+    <div class="g-hright">
+      <div class="g-fbadge fb-you" id="g-fbadge">先攻: -</div>
+      <div class="g-turn">ターン <span id="g-turn">1</span> ｜ <span id="g-phase">-</span></div>
+    </div>
+  </div>
+
+  <!-- メインフィールド -->
+  <div id="g-board">
+    <div id="g-field">
+
+      <!-- 相手手札（右上・枚数バッジ） -->
+      <div id="ohand-area">
+        <div id="ohand-badge">🂠 相手手札<br><span id="ohcnt">0</span>枚</div>
+      </div>
+
+      <!-- 相手マナ（シールドの上＝こちらから見て） -->
+      <div class="field-row row-mana">
+        <span class="field-lbl" id="omnalbl">相手マナ 0</span>
+        <div class="mzone" id="omna"></div>
+      </div>
+
+      <!-- 相手シールド＋墓地ボタン -->
+      <div class="field-row row-oshield">
+        <button class="grave-btn opp-grave" onclick="showGraveModal('opp')">🪦<span id="ogcnt">0</span></button>
+        <div class="shields" id="osh"></div>
+        <span class="field-lbl">シールド <span id="osc">5</span></span>
+      </div>
+
+      <!-- 相手バトルゾーン -->
+      <div class="field-row row-bzone">
+        <div class="bzone bz-o" id="obz" data-empty="クリーチャーなし"></div>
+      </div>
+
+      <!-- センターライン -->
+      <div id="g-centerline">
+        <button id="log-btn" onclick="toggleLogModal()">📜 <span id="log-badge" class="log-badge" style="display:none;">0</span></button>
+        <div class="divr"></div>
+        <span id="center-phase" class="phase-label">-</span>
+        <div class="divr"></div>
+        <button class="pbtn" id="pbtn" onclick="nextPhase()">▶</button>
+      </div>
+
+      <!-- 自分バトルゾーン -->
+      <div class="field-row row-bzone">
+        <div class="bzone bz-y" id="mbz" data-empty="クリーチャーなし"></div>
+      </div>
+
+      <!-- 自分シールド＋墓地ボタン -->
+      <div class="field-row row-mshield">
+        <button class="grave-btn my-grave" onclick="showGraveModal('my')">🪦<span id="gcnt">0</span></button>
+        <div class="shields" id="msh"></div>
+        <span class="field-lbl">シールド <span id="msc">5</span></span>
+      </div>
+
+      <!-- 自分マナ（シールドの下） -->
+      <div class="field-row row-mana">
+        <span class="field-lbl" id="mnalbl">マナ 0/0</span>
+        <div class="mzone" id="mna"></div>
+      </div>
+
+    </div><!-- end g-field -->
+  </div><!-- end g-board -->
+
+  <!-- 手札エリア（g-boardの外・scr-game直下） -->
+  <div id="g-hand">
+    <div id="g-hlbl">手札（0枚）</div>
+    <div id="g-hcards"></div>
+  </div>
+
+</div><!-- end scr-game -->
+
+<!-- カード一覧モーダル -->
+<div id="card-list-modal" onclick="closeCardListModal()">
+  <div id="clm-inner" onclick="event.stopPropagation()">
+    <div class="modal-title">📋 カード一覧</div>
+    <div id="clm-list"></div>
+    <button class="modal-close-btn" onclick="closeCardListModal()">✕ 閉じる</button>
+  </div>
+</div>
+
+<!-- デッキモーダル -->
+<div id="deck-modal" onclick="closeDeckModal()">
+  <div id="dm-inner" onclick="event.stopPropagation()">
+    <div class="modal-title">📦 デッキ管理</div>
+    <div id="dm-saved-list"></div>
+    <div id="dm-editor">
+      <div id="dm-editor-header">
+        <input id="dm-deck-name" type="text" placeholder="デッキ名" maxlength="20">
+        <button onclick="saveDeck()">💾 保存</button>
+      </div>
+      <div id="dm-editor-cards"></div>
+    </div>
+    <button class="modal-close-btn" onclick="closeDeckModal()">✕ 閉じる</button>
+  </div>
+</div>
+
+<!-- ログモーダル -->
+<div id="log-modal" onclick="closeLogModal()">
+  <div id="log-modal-inner" onclick="event.stopPropagation()">
+    <div id="log-modal-title">📜 ゲームログ</div>
+    <div id="g-loglist"></div>
+    <button onclick="closeLogModal()">✕ 閉じる</button>
+  </div>
+</div>
+
+<!-- 場を見る：戻るボタン -->
+<button id="field-view-btn" onclick="closeFieldViewModal()">◀ ポップアップに戻る</button>
+
+<!-- カードアクションポップアップ（fixed） -->
+<div id="card-action-popup"></div>
+
+<!-- 墓地・マナ閲覧モーダル -->
+<div id="zone-modal" onclick="closeZoneModal()">
+  <div id="zone-modal-inner" onclick="event.stopPropagation()">
+    <div id="zm-title"></div>
+    <div id="zm-actions"></div>
+    <div id="zm-list"></div>
+    <button id="zm-close" onclick="closeZoneModal()">✕ 閉じる</button>
+  </div>
+</div>
+
+<!-- カードプレビューモーダル -->
+<div id="card-modal" onclick="closeCardModal()">
+  <div id="card-modal-inner" onclick="event.stopPropagation()">
+    <div id="cm-img-wrap"></div>
+    <div id="cm-info">
+      <div id="cm-name"></div>
+      <div id="cm-cost"></div>
+      <div id="cm-eff"></div>
+    </div>
+    <button id="cm-close" onclick="closeCardModal()">✕ 閉じる</button>
+  </div>
+</div>
+
+<!-- 効果選択ポップアップ（はい/いいえ系） -->
+<div id="eff-popup">
+  <div id="eff-popup-inner">
+    <div id="eff-title"></div>
+    <div id="eff-desc"></div>
+    <div id="eff-btns"></div>
+    <button id="eff-confirm" onclick="confirmEffPopup()" disabled style="margin-top:8px;padding:7px 20px;background:rgba(255,204,0,.12);border:1px solid var(--gold);border-radius:8px;color:var(--gold);font-size:.65rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;width:100%;transition:background .15s;">✅ 決定</button>
+    <button onclick="openFieldViewModal()" style="margin-top:4px;padding:5px 20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:rgba(255,255,255,.5);font-size:.58rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;width:100%;">👁 場を見る</button>
+  </div>
+</div>
+
+<!-- カード選択ポップアップ -->
+<div id="card-sel-popup" onclick="event.stopPropagation()">
+  <div id="csp-inner">
+    <div id="csp-title"></div>
+    <div id="csp-desc"></div>
+    <div id="csp-cards"></div>
+    <div id="csp-preview">
+      <div id="csp-prev-img"></div>
+      <div id="csp-prev-info">
+        <div id="csp-prev-name"></div>
+        <div id="csp-prev-eff"></div>
+      </div>
+    </div>
+    <div id="csp-footer">
+      <button id="csp-cancel" onclick="cancelCardSel()">✕ キャンセル</button>
+      <button id="csp-confirm" onclick="confirmCardSel()" disabled>✅ 決定</button>
+      <button onclick="openFieldViewModal()" style="padding:7px 8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:rgba(255,255,255,.5);font-size:.58rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;flex-shrink:0;">👁</button>
+    </div>
+  </div>
+</div>
+
+<!-- 結果 -->
+<div id="scr-result">
+  <div class="rb">
+    <div class="rt" id="r-title">勝利！</div>
+    <div class="rs" id="r-sub"></div>
+    <button class="rbtn" onclick="goTitle()">タイトルへ戻る</button>
+  </div>
+</div>
+
+<script>
+/* ══════════════════════════════════════════
+   デッキリスト（黒緑アビス 40枚）
+══════════════════════════════════════════ */
+var CARD_IMAGES={belladonna:"",abyssbell:"",fairy_life:"",maardan:"https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm22rp2-S5.jpg",jagaisuto:"https://dm.takaratomy.co.jp/wp-content/card/cardimage/dm26sd1-m002F.jpg",teresu:"",footless:"",cardback:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MyA4OCI+CiAgPGRlZnM+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImJnIiBjeD0iNTAlIiBjeT0iNTAlIiByPSI2MCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMWEzYThhIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA1MGQyZSIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0iZ2xvdyIgY3g9IjUwJSIgY3k9IjUwJSIgcj0iNTAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2ZmZGQwMCIgc3RvcC1vcGFjaXR5PSIwLjkiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI2MCUiIHN0b3AtY29sb3I9IiNmZmFhMDAiIHN0b3Atb3BhY2l0eT0iMC42Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2ZmNjYwMCIgc3RvcC1vcGFjaXR5PSIwIi8+CiAgICA8L3JhZGlhbEdyYWRpZW50PgogIDwvZGVmcz4KICA8IS0tIOiDjOaZryAtLT4KICA8cmVjdCB3aWR0aD0iNjMiIGhlaWdodD0iODgiIHJ4PSI0IiBmaWxsPSJ1cmwoI2JnKSIvPgogIDwhLS0g5aSW5p6gIC0tPgogIDxyZWN0IHg9IjEuNSIgeT0iMS41IiB3aWR0aD0iNjAiIGhlaWdodD0iODUiIHJ4PSIzIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzU1Y2MiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIOOCsOODreODvCAtLT4KICA8ZWxsaXBzZSBjeD0iMzEuNSIgY3k9IjQ0IiByeD0iMjIiIHJ5PSIyMiIgZmlsbD0idXJsKCNnbG93KSIgb3BhY2l0eT0iMC41Ii8+CiAgPCEtLSDjg6HjgqTjg7PjgrXjg7zjgq/jg6sgLS0+CiAgPGNpcmNsZSBjeD0iMzEuNSIgY3k9IjQ0IiByPSIxOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZjYzAwIiBzdHJva2Utd2lkdGg9IjIuNSIgb3BhY2l0eT0iMC45Ii8+CiAgPGNpcmNsZSBjeD0iMzEuNSIgY3k9IjQ0IiByPSIxNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZhYTAwIiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNiIvPgogIDwhLS0g5YaF5YG044Gu6KOF6aO+IC0tPgogIDxjaXJjbGUgY3g9IjMxLjUiIGN5PSI0NCIgcj0iNyIgZmlsbD0iI2ZmY2MwMCIgb3BhY2l0eT0iMC44NSIvPgogIDxjaXJjbGUgY3g9IjMxLjUiIGN5PSI0NCIgcj0iNCIgZmlsbD0iI2ZmZjhhYSIgb3BhY2l0eT0iMC45NSIvPgogIDwhLS0g44Kz44O844OK44O86KOF6aO+IC0tPgogIDxjaXJjbGUgY3g9IjgiIGN5PSI4IiByPSIyLjUiIGZpbGw9IiMzMzY2ZGQiIHN0cm9rZT0iIzY2OTlmZiIgc3Ryb2tlLXdpZHRoPSIwLjgiIG9wYWNpdHk9IjAuOCIvPgogIDxjaXJjbGUgY3g9IjU1IiBjeT0iOCIgcj0iMi41IiBmaWxsPSIjMzM2NmRkIiBzdHJva2U9IiM2Njk5ZmYiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjgiLz4KICA8Y2lyY2xlIGN4PSI4IiBjeT0iODAiIHI9IjIuNSIgZmlsbD0iIzMzNjZkZCIgc3Ryb2tlPSIjNjY5OWZmIiBzdHJva2Utd2lkdGg9IjAuOCIgb3BhY2l0eT0iMC44Ii8+CiAgPGNpcmNsZSBjeD0iNTUiIGN5PSI4MCIgcj0iMi41IiBmaWxsPSIjMzM2NmRkIiBzdHJva2U9IiM2Njk5ZmYiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjgiLz4KICA8IS0tIOS4iuS4i+ijhemjvuODqeOCpOODsyAtLT4KICA8bGluZSB4MT0iMTQiIHkxPSI2IiB4Mj0iNDkiIHkyPSI2IiBzdHJva2U9IiM0NDc3ZWUiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjYiLz4KICA8bGluZSB4MT0iMTQiIHkxPSI4MiIgeDI9IjQ5IiB5Mj0iODIiIHN0cm9rZT0iIzQ0NzdlZSIgc3Ryb2tlLXdpZHRoPSIwLjgiIG9wYWNpdHk9IjAuNiIvPgo8L3N2Zz4=",aenumakua:"",dommy:"",chitsujoi:"",ketsu:"",tinpani:"",f_gift:""};
+var DECK = [
+  {id:'fairy_life',name:'フェアリー･Re:ライフ',    cost:2,pow:0,   type:'spell',   civ:'n',icon:'🌿',eff:'■ G・ストライク（このクリーチャーがシールドゾーンから手札に加わる時、相手に見せてもよい。そうしたら相手のクリーチャーを1体選ぶ。このターン、そのクリーチャーは攻撃できない）\n■ 自分の山札の上から1枚目をマナゾーンに置く。',n:4},
+  {id:'belladonna',name:'悪魔妖精 ベラドンナ',      cost:2,pow:2000,type:'creature',civ:'m',icon:'💠',eff:'■ このクリーチャーが出た時、このクリーチャーを破壊してもよい。そうしたら、次のうちいずれか1つを選ぶ。\n▶ 相手は自身の手札を1枚選んで捨てる。\n▶ 自分の山札の上から1枚目をマナゾーンに置く。',n:4},
+  {id:'maardan',   name:'深淵の壊炉 マーダン=ロウ',cost:4,pow:4000,type:'creature',civ:'d',icon:'🌑',eff:'■ スレイヤー\n■ このクリーチャーが出た時、相手の手札を見る。その中からクリーチャーを1体選び、捨てさせる。\n■ シビルカウント3：このクリーチャーが攻撃する時、自分の闇のクリーチャーが3体以上あれば、相手の墓地のカードを1枚選んでもよい。その「出た時」の能力を使う。その後相手はそのカードを山札の一番下に置く。',n:4},
+  {id:'footless',  name:'フットレス＝トレース',     cost:4,pow:4000,type:'creature',civ:'d',icon:'🌑',eff:'■ ブロッカー\n■ 自分のターンの終わりに、自分の山札の上から1枚目を墓地に置いてもよい。そうしたら、闇のカードを1枚、自分の墓地から手札に戻してもよい。',n:4, twin:true, spellName:'「力が欲しいか？」', spellCost:4, spellEff:'■ アビス・メクレイド5（自分の山札の上から3枚を表向きにする。その中からコスト5以下のアビスを1体、コストを支払わずに使ってよい。残りを好きな順序で山札の一番下に置く）'},
+  {id:'f_gift',    name:'フェアリー･ギフト',        cost:1,pow:0,   type:'spell',   civ:'n',icon:'🌿',eff:'■ このターン、次に召喚するクリーチャー1体は、支払うコストが3少なくなる。ただしコストは1より少なくならない。',n:1},
+  {id:'tinpani',   name:'ティンパニ=シンバリー',    cost:4,pow:4000,type:'creature',civ:'d',icon:'🌑',eff:'■ ブロッカー\n■ ヨビニオン（このクリーチャーが召喚によって出た時、自分の山札の上から、これよりコストが小さいクリーチャーが出るまで表向きにしてもよい。そのクリーチャーを出す。残りをシャッフルし、山札の一番下に置く）\n■ 各ターン、自分の2体目のクリーチャーが出た時、このクリーチャーを破壊してもよい。そうしたら、相手は自身のクリーチャーを1体選んで破壊する。',n:3},
+  {id:'dommy',     name:'ドミー=ゾー',              cost:5,pow:6000,type:'creature',civ:'d',icon:'🌑',eff:'■ アビスラッシュ（このクリーチャーを自分の墓地から召喚してもよい。そうしたら、このターン、このクリーチャーはプレイヤーを攻撃でき、ターンの終わりに山札の一番下に置かれる）\n■ W・ブレイカー（このクリーチャーはシールドを2枚ブレイクする）\n■ このクリーチャーが出た時、自分の山札の上から5枚を墓地に置いてもよい。',n:2, twin:true, spellName:'「倒したいか？」', spellCost:2, spellEff:'■ 自分の山札の上から1枚目をマナゾーンに置く。'},
+  {id:'ketsu',     name:'絶望と反魂と滅殺の決断',  cost:5,pow:0,   type:'spell',   civ:'d',icon:'🌑',eff:'■ この呪文を、自分の墓地から唱えてもよい。そうしたら、唱えた後、墓地に置くかわりに山札の一番下に置く。\n■ 次の中から2回選ぶ。（同じものを選んでもよい）\n▶ 相手は自身の手札を1枚選んで捨てる。\n▶ コスト4以下の闇のクリーチャー1体またはコスト4以下の闇のオーラを1枚、自分の墓地から出す。\n▶ 相手のクリーチャーを1体選ぶ。このターン、そのクリーチャーのパワーを-4000する。',n:2},
+  {id:'teresu',    name:'謀遠 テレスコ=テレス',    cost:5,pow:5000,type:'creature',civ:'d',icon:'🌑',eff:'■ ブロッカー\n■ パワード・ブレイカー\n■ 相手のターンのはじめに、相手は自身の手札を1枚選んで捨てる。\n■ 相手が手札を捨てた時、自分はカードを1枚引いてもよい。\n■ 手札が0枚のプレイヤー1人につき、このクリーチャーのパワーを+5000する。',n:4},
+  {id:'aenumakua', name:'ア:エヌ:マクア',           cost:5,pow:6000,type:'creature',civ:'n',icon:'🌿',eff:'■ マッハファイター\n■ W・ブレイカー\n■ このクリーチャーが出た時、次のうちいずれか1つを選ぶ。\n▶ 自分の山札の上から2枚を、タップしてマナゾーンに置く。その後、カードを1枚、自分のマナゾーンから手札に戻す。\n▶ プレイヤーを1人選ぶ。そのプレイヤーは、自身の墓地をシャッフルし、山札の一番下に置く。\n▶ 相手は、自身のコスト5以下の、クリーチャーではないエレメントをすべてマナゾーンに置く。',n:4},
+  {id:'chitsujoi', name:'秩序の意志',               cost:4,pow:0,   type:'spell',   civ:'d',icon:'🌑',eff:'■ S・バック－闇（闇のカードを自分のシールドゾーンから手札に加える時、そのカードを捨ててもよい。そうしたら、コストを支払わずにこの呪文を唱える）\n■ 相手のクリーチャーを1体選ぶ。相手はそれに封印を1つ付ける。（カードを封印するには、自分の山札の上から1枚目を裏向きのままそのカードの上に置く）',n:3},
+  {id:'jagaisuto', name:'邪幽 ジャガイスト',        cost:5,pow:9000,type:'creature',civ:'d',icon:'🌑',eff:'■ ブロッカー\n■ W・ブレイカー\n■ このクリーチャーが出た時、自分の手札を2枚捨ててもよい。そうしたら、アビス・メクレイド5する。\n■ 各ターン1度、自分の山札からクリーチャーが出た時、そのコスト以下のアビスを1体、自分の墓地から出してもよい。そのターン、そのアビスは相手プレイヤーを攻撃でき、ターンの終わりに山札の一番下に置かれる。',n:1},
+  {id:'abyssbell', name:'アビスベル=覇=ロード',     cost:7,pow:11000,type:'creature',civ:'m',icon:'💠',eff:'■ W・ブレイカー\n■ 自分のアビスすべてに「マッハファイター」を与える。\n■ 自分のターンの終わりに、コスト6以下のアビス・クリーチャーを1体、自分の墓地またはマナゾーンから出してもよい。\n■ 各ターン、相手のクリーチャーがはじめて攻撃するなら、可能であればこのクリーチャーを攻撃する。',n:4}
+];
+// 4+4+4+4+1+3+2+2+4+4+3+1+4 = 40
+
+/* ══ 画面切り替え ══ */
+function showScr(id){
+  var ids=['scr-title','scr-coin','scr-game'];
+  for(var i=0;i<ids.length;i++){
+    var el=document.getElementById(ids[i]);
+    if(el) el.className = (ids[i]===id) ? 'on' : '';
+  }
+}
+
+/* ══ ゲーム状態 ══ */
+var G={myFirst:true};
+var G_testMode=false;
+var UID=0;
+function nuid(){return ++UID;}
+
+function buildDeck(){
+  var deck=[];
+  for(var i=0;i<DECK.length;i++){
+    var c=DECK[i];
+    for(var j=0;j<c.n;j++) deck.push({id:c.id,name:c.name,cost:c.cost,pow:c.pow,type:c.type,civ:c.civ,icon:c.icon,eff:c.eff,uid:nuid(),twin:c.twin||false,spellName:c.spellName||'',spellCost:c.spellCost||0,spellEff:c.spellEff||''});
+  }
+  for(var k=deck.length-1;k>0;k--){
+    var r=Math.floor(Math.random()*(k+1));
+    var tmp=deck[k];deck[k]=deck[r];deck[r]=tmp;
+  }
+  return deck;
+}
+
+/* ══ タイトル → コイン ══ */
+function startTest(){
+  G_testMode=true;
+  // コイントスをスキップして即ゲーム開始（自分先攻固定）
+  G.myFirst=true;
+  startGame();
+  // バッジ表示
+  var badge=document.getElementById('test-badge');
+  if(badge) badge.className='on';
+  log('w','🔧 テストモード：マナコスト0で自由に使用できます');
+}
+function startCoin(){
+  showScr('scr-coin');
+  var icon=document.getElementById('c-icon');
+  icon.className='c-spin';
+  icon.textContent='🪙';
+  document.getElementById('c-result').textContent='';
+  document.getElementById('c-sub').innerHTML='';
+  document.getElementById('c-go').style.display='none';
+  setTimeout(function(){
+    G.myFirst=(Math.random()<.5);
+    var icon2=document.getElementById('c-icon');
+    icon2.className='';
+    icon2.textContent=G.myFirst?'🌿':'🌑';
+    var rt=document.getElementById('c-result');
+    rt.textContent=G.myFirst?'🎉 あなたが先攻！':'相手が先攻...';
+    rt.style.color=G.myFirst?'#ffcc00':'#aa88cc';
+    document.getElementById('c-sub').innerHTML=G.myFirst
+      ?'あなたから始めます。<br>先攻1ターン目はドローなし。'
+      :'相手から始めます。<br>後攻1ターン目はドローあり。';
+    document.getElementById('c-go').style.display='inline-block';
+  },1500);
+}
+
+/* ══ コイン → ゲーム開始 ══ */
+function startGame(){
+  var badge=document.getElementById('g-fbadge');
+  badge.textContent=G.myFirst?'先攻: あなた':'先攻: 相手';
+  badge.className='g-fbadge '+(G.myFirst?'fb-you':'fb-opp');
+  showScr('scr-game');
+  initGame();
+}
+
+/* ══ カード一覧 ══ */
+function openCardListModal(){
+  var list=document.getElementById('clm-list');
+  list.innerHTML='';
+  for(var i=0;i<DECK.length;i++){
+    var c=DECK[i];
+    var d=document.createElement('div'); d.className='clm-card';
+    if(CARD_IMAGES[c.id]){
+      var img=document.createElement('img'); img.src=CARD_IMAGES[c.id]; img.alt=c.name;
+      d.appendChild(img);
+    } else {
+      var ic=document.createElement('div'); ic.className='clm-card-icon'; ic.textContent=c.icon||'🃏';
+      d.appendChild(ic);
+    }
+    var nm=document.createElement('div'); nm.className='clm-card-name'; nm.textContent=c.name;
+    d.appendChild(nm);
+    (function(card){bindDoubleTap(d,function(){openCardModal(card);});})(c);
+    list.appendChild(d);
+  }
+  document.getElementById('card-list-modal').className='open';
+}
+function closeCardListModal(){
+  document.getElementById('card-list-modal').className='';
+}
+
+/* ══ デッキ管理 ══ */
+var G_currentDeckEdit=[]; // 現在編集中のデッキ {id, n}
+
+function openDeckModal(){
+  G_currentDeckEdit=DECK.map(function(c){return{id:c.id,n:c.n};});
+  renderDeckEditor();
+  loadSavedDeckList();
+  document.getElementById('dm-deck-name').value='';
+  document.getElementById('deck-modal').className='open';
+}
+function closeDeckModal(){
+  document.getElementById('deck-modal').className='';
+}
+
+function renderDeckEditor(){
+  var el=document.getElementById('dm-editor-cards'); el.innerHTML='';
+  var total=0;
+  for(var i=0;i<G_currentDeckEdit.length;i++){
+    var entry=G_currentDeckEdit[i];
+    total+=entry.n;
+    var def=null; for(var j=0;j<DECK.length;j++){if(DECK[j].id===entry.id){def=DECK[j];break;}}
+    if(!def) continue;
+    var row=document.createElement('div'); row.className='dm-card-row';
+    if(CARD_IMAGES[entry.id]){var img=document.createElement('img');img.className='dm-card-img';img.src=CARD_IMAGES[entry.id];row.appendChild(img);}
+    else{var ic=document.createElement('div');ic.className='dm-card-icon';ic.textContent=def.icon||'🃏';row.appendChild(ic);}
+    var info=document.createElement('div'); info.className='dm-card-info';
+    info.innerHTML='<div class="dm-card-n">'+def.name+'</div><div class="dm-card-c">コスト'+def.cost+(def.pow?' P:'+def.pow:'')+'</div>';
+    row.appendChild(info);
+    var qty=document.createElement('div'); qty.className='dm-qty';
+    var bm=document.createElement('button'); bm.textContent='－';
+    var val=document.createElement('div'); val.className='dm-qty-val'; val.textContent=entry.n;
+    var bp=document.createElement('button'); bp.textContent='＋';
+    (function(e,v){
+      bm.onclick=function(){if(e.n>0){e.n--;v.textContent=e.n;}};
+      bp.onclick=function(){if(e.n<4){e.n++;v.textContent=e.n;}};
+    })(entry,val);
+    qty.appendChild(bm); qty.appendChild(val); qty.appendChild(bp);
+    row.appendChild(qty);
+    el.appendChild(row);
+  }
+  // 合計枚数表示
+  var h=document.querySelector('.modal-title');
+  // ヘッダーに枚数を反映
+  document.querySelector('#dm-inner .modal-title').textContent='📦 デッキ管理（'+total+'枚）';
+}
+
+async function saveDeck(){
+  var name=document.getElementById('dm-deck-name').value.trim();
+  if(!name){alert('デッキ名を入力してください');return;}
+  var total=G_currentDeckEdit.reduce(function(s,e){return s+e.n;},0);
+  if(total<1){alert('カードが0枚です');return;}
+  var data={name:name,cards:G_currentDeckEdit,total:total,savedAt:Date.now()};
+  try{
+    await window.storage.set('deck:'+name, JSON.stringify(data));
+    loadSavedDeckList();
+    alert('「'+name+'」を保存しました（'+total+'枚）');
+  }catch(e){alert('保存に失敗しました: '+e);}
+}
+
+async function loadSavedDeckList(){
+  var el=document.getElementById('dm-saved-list'); el.innerHTML='';
+  var h=document.createElement('div');
+  h.style.cssText='font-size:.56rem;color:rgba(255,255,255,.35);margin-bottom:2px;';
+  h.textContent='保存済みデッキ';
+  el.appendChild(h);
+  try{
+    var keys=await window.storage.list('deck:');
+    if(!keys||!keys.keys||keys.keys.length===0){
+      var em=document.createElement('div'); em.style.cssText='font-size:.55rem;color:rgba(255,255,255,.25);padding:4px;'; em.textContent='保存済みデッキなし';
+      el.appendChild(em); return;
+    }
+    for(var i=0;i<keys.keys.length;i++){
+      var result=await window.storage.get(keys.keys[i]);
+      if(!result) continue;
+      var data=JSON.parse(result.value);
+      var row=document.createElement('div'); row.className='dm-saved-item';
+      var nm=document.createElement('div'); nm.className='dm-saved-name'; nm.textContent=data.name;
+      var cnt=document.createElement('div'); cnt.className='dm-saved-count'; cnt.textContent=data.total+'枚';
+      var lb=document.createElement('button'); lb.className='dm-load-btn'; lb.textContent='読込';
+      var db=document.createElement('button'); db.className='dm-del-btn'; db.textContent='削除';
+      (function(d,k){
+        lb.onclick=function(){loadDeck(d);};
+        db.onclick=async function(){
+          if(!confirm('「'+d.name+'」を削除しますか？')) return;
+          await window.storage.delete(k); loadSavedDeckList();
+        };
+      })(data,keys.keys[i]);
+      row.appendChild(nm); row.appendChild(cnt); row.appendChild(lb); row.appendChild(db);
+      el.appendChild(row);
+    }
+  }catch(e){
+    var em=document.createElement('div'); em.style.cssText='font-size:.55rem;color:rgba(255,150,150,.6);padding:4px;'; em.textContent='ストレージ読込エラー';
+    el.appendChild(em);
+  }
+}
+
+function loadDeck(data){
+  G_currentDeckEdit=data.cards.map(function(e){return{id:e.id,n:e.n};});
+  document.getElementById('dm-deck-name').value=data.name;
+  renderDeckEditor();
+  // 現在のデッキに適用
+  applyDeckEdit(data.name);
+}
+
+function applyDeckEdit(name){
+  // DECK配列のnを更新
+  for(var i=0;i<DECK.length;i++){
+    for(var j=0;j<G_currentDeckEdit.length;j++){
+      if(DECK[i].id===G_currentDeckEdit[j].id){DECK[i].n=G_currentDeckEdit[j].n;break;}
+    }
+  }
+  var total=G_currentDeckEdit.reduce(function(s,e){return s+e.n;},0);
+  var badge=document.getElementById('t-deck-badge');
+  if(badge) badge.textContent=(name||'カスタムデッキ')+'（'+total+'枚）';
+  log('s','デッキ「'+(name||'カスタム')+'」を読み込みました（'+total+'枚）');
+}
+
+function goTitle(){
+  G_testMode=false;
+  var badge=document.getElementById('test-badge');
+  if(badge) badge.className='';
+  document.getElementById('scr-result').className='';
+  document.getElementById('g-loglist').innerHTML='';
+  showScr('scr-title');
+}
+
+/* ══ ゲーム初期化 ══ */
+function initGame(){
+  var md=buildDeck(), od=buildDeck();
+  var msh=md.splice(md.length-5,5);
+  var osh=od.splice(od.length-5,5);
+  G={
+    myFirst:G.myFirst, turn:1, phase:-1,
+    PHASES:['アンタップ','ドロー','チャージ','メイン','攻撃'],
+    myDeck:md, myHand:[], myBattle:[], myMana:[],
+    myShields:msh.map(function(c){return{intact:true,card:c};}),
+    oppDeck:od, oppHand:[], oppBattle:[], oppMana:[],
+    oppShields:osh.map(function(c){return{intact:true,card:c};}),
+    grave:[], oppGrave:[], sel:null, charged:false, costBonus:0, over:false, turnCreatureCount:0, jagaisutoUsed:false
+  };
+  for(var i=0;i<5;i++) myDraw(true);
+  for(var i=0;i<5;i++){if(G.oppDeck.length>0)G.oppHand.push(G.oppDeck.pop());}
+  log('s','── デュエル・スタート！ ──');
+  log('s','自'+G.myDeck.length+'枚 / 相手'+G.oppDeck.length+'枚');
+  render();
+  if(G.myFirst){
+    log('s','先攻1Tはドローなし。チャージから開始。');
+    safeTimeout(function(){G.phase=2;runPhase();},600);
+  } else {
+    setPBtn('（相手ターン中）');
+    log('s','相手の先攻です...');
+    safeTimeout(oppTurn,900);
+  }
+}
+
+/* ══ ドロー ══ */
+function myDraw(silent){
+  if(G.myDeck.length===0){endGame(false,'山札切れ');return;}
+  var c=G.myDeck.pop(); G.myHand.push(c);
+  if(!silent) log('s','「'+c.name+'」をドロー');
+}
+
+/* ══ フェイズ ══ */
+var G_chargeTimer=null;
+function nextPhase(){
+  if(G.over) return;
+  G.phase++;
+  if(G.phase>=5){endTurn();return;}
+  runPhase();
+}
+function runPhase(){
+  var p=G.phase;
+  setPhase(G.PHASES[p]);
+  if(p===0){
+    for(var i=0;i<G.myBattle.length;i++){ G.myBattle[i].tapped=false; G.myBattle[i].summoned=false; }
+    for(var i=0;i<G.myMana.length;i++) G.myMana[i].tapped=false;
+    G.charged=false; G.costBonus=0; G.turnCreatureCount=0; G.jagaisutoUsed=false;
+    log('s','── ターン'+G.turn+' アンタップ ──'); render();
+    safeTimeout(function(){G.phase=1;runPhase();},400); return;
+  }
+  if(p===1){
+    myDraw(false); render();
+    safeTimeout(function(){G.phase=2;runPhase();},350); return;
+  }
+  if(p===2){setPhase('チャージ');setPBtn('スキップ▶');log('s','チャージ：手札からマナに1枚置けます');render();return;}
+  if(p===3){setPhase('メイン');setPBtn('攻撃へ▶');log('s','メイン：召喚・呪文が使えます');render();return;}
+  if(p===4){setPhase('攻撃');setPBtn('ターン終了▶');log('s','攻撃：クリーチャーで攻撃できます');render();return;}
+}
+function endTurn(){
+  if(G.over) return;
+  G.sel=null; G.costBonus=0;
+
+  // アビスラッシュ：ターン終了時に山札の下へ
+  var rushers=G.myBattle.filter(function(x){return x.abyssRush;});
+  if(rushers.length>0){
+    for(var i=0;i<rushers.length;i++){
+      G.myDeck.unshift(rushers[i]);
+      log('w','🌑 アビスラッシュ：「'+rushers[i].name+'」を山札の下へ');
+    }
+    G.myBattle=G.myBattle.filter(function(x){return !x.abyssRush;});
+  }
+  var footlessList=G.myBattle.filter(function(x){return x.id==='footless';});
+  for(var fi=0;fi<footlessList.length;fi++){
+    if(G.myDeck.length>0){
+      var top=G.myDeck.pop();
+      G.grave.push(top);
+      log('w','🌑 フットレス：「'+top.name+'」を山札から墓地へ');
+    }
+    var darkGrave=G.grave.filter(function(x){return (x.civ==='d'||x.civ==='m')&&!x.usedAsSpell;});
+    if(darkGrave.length>0){
+      (function(dg){
+        showCardSelectPopup(
+          'フットレス＝トレース',
+          '墓地の闇のカードを1枚、手札に戻してもよい。',
+          dg.slice().reverse(),
+          function(sel){
+            if(!sel){log('w','🌑 フットレス：回収しない');return;}
+            G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
+            G.myHand.push({id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff});
+            log('w','🌑 フットレス：「'+sel.name+'」を手札に回収！');
+            render();
+          },
+          {skipLabel:'✋ 戻さない'}
+        );
+      })(darkGrave);
+    }
+  }
+  // アビスベル=覇=ロードのターン終了時効果：コスト6以下のアビスを墓地/マナから1体出してもよい
+  var bells=G.myBattle.filter(function(x){return x.id==='abyssbell';});
+  if(bells.length>0){
+    var abyssIds=['maardan','footless','teresu','aenumakua','tinpani','dommy','jagaisuto','abyssbell'];
+    var fromGrave=G.grave.filter(function(x){return x.type==='creature'&&x.cost<=6&&abyssIds.indexOf(x.id)>=0&&!x.usedAsSpell;});
+    var fromMana=[];
+    for(var i=0;i<G.myMana.length;i++){
+      var mc=G.myMana[i];
+      var def=null; for(var j=0;j<DECK.length;j++){if(DECK[j].name===mc.name){def=DECK[j];break;}}
+      if(def&&def.type==='creature'&&def.cost<=6&&abyssIds.indexOf(def.id)>=0) fromMana.push({manaIdx:i,def:def});
+    }
+    var allOpts=[];
+    for(var i=0;i<fromGrave.length;i++) allOpts.push({label:'🪦 墓地：'+fromGrave[i].name+'（コスト'+fromGrave[i].cost+' P:'+fromGrave[i].pow+'）',cls:'',src:'grave',idx:i});
+    for(var i=0;i<fromMana.length;i++) allOpts.push({label:'🌿 マナ：'+fromMana[i].def.name+'（コスト'+fromMana[i].def.cost+' P:'+fromMana[i].def.pow+'）',cls:'',src:'mana',idx:i});
+    if(allOpts.length>0){
+      // 墓地カードとマナカードをセクション分けして表示
+      var cardList=[];
+      // 墓地セクション
+      if(fromGrave.length>0){
+        cardList.push({id:'_header_grave',name:'── 🪦 墓地 ──',cost:0,pow:0,civ:'d',icon:'🪦',eff:'',uid:'_header_grave',_header:true});
+        for(var i=0;i<fromGrave.length;i++){
+          var fg=fromGrave[i];
+          cardList.push({id:fg.id,name:fg.name,cost:fg.cost,pow:fg.pow,civ:fg.civ,icon:fg.icon,eff:fg.eff,uid:fg.uid,src:'grave',_orig:fg});
+        }
+      }
+      // マナセクション
+      if(fromMana.length>0){
+        cardList.push({id:'_header_mana',name:'── 🌿 マナ ──',cost:0,pow:0,civ:'n',icon:'🌿',eff:'',uid:'_header_mana',_header:true});
+        for(var i=0;i<fromMana.length;i++){
+          var fm=fromMana[i].def;
+          cardList.push({id:fm.id,name:fm.name,cost:fm.cost,pow:fm.pow,civ:fm.civ,icon:fm.icon,eff:fm.eff,uid:fm.id+'_mana_'+i,src:'mana',manaIdx:fromMana[i].manaIdx,_def:fm});
+        }
+      }
+      showCardSelectPopup(
+        'アビスベル=覇=ロード',
+        'ターン終了時：コスト6以下のアビスを\n墓地またはマナから1体出してもよい。',
+        cardList,
+        function(sel){
+          if(!sel){log('w','💠 アビスベル：出さない');return;}
+          if(sel.src==='grave'){
+            var p=sel._orig;
+            G.grave=G.grave.filter(function(x){return x.uid!==p.uid;});
+            G.myBattle.push({id:p.id,name:p.name,cost:p.cost,pow:p.pow,type:p.type,civ:p.civ,icon:p.icon,eff:p.eff,uid:nuid(),tapped:false,summoned:true});
+            log('w','💠 アビスベル：「'+p.name+'」を墓地から召喚！');
+            mySummonEff(p);
+          } else {
+            G.myMana.splice(sel.manaIdx,1);
+            var d=sel._def;
+            G.myBattle.push({id:d.id,name:d.name,cost:d.cost,pow:d.pow,type:d.type,civ:d.civ,icon:d.icon,eff:d.eff,uid:nuid(),tapped:false,summoned:true});
+            log('w','💠 アビスベル：「'+d.name+'」をマナから召喚！');
+            mySummonEff(d);
+          }
+          render();
+        },
+        {skipLabel:'✋ 出さない'}
+      );
+    } else {
+      log('w','💠 アビスベル：墓地/マナに対象アビスなし');
+    }
+  }
+  log('s','ターン終了 → 相手のターン'); render();
+  safeTimeout(oppTurn,500);
+}
+
+/* ══ 相手AI ══ */
+function oppTurn(){
+  if(G.over) return;
+  G.turn++;
+  document.getElementById('g-turn').textContent=G.turn;
+  setPBtn('（相手ターン中）'); setPhase('相手ターン');
+  log('s','── 相手ターン'+G.turn+' ──');
+  for(var i=0;i<G.oppBattle.length;i++){ G.oppBattle[i].tapped=false; G.oppBattle[i].summoned=false; }
+
+  // テレスコ=テレス：相手ターンのはじめにハンデス
+  var teresuCount=G.myBattle.filter(function(x){return x.id==='teresu';}).length;
+  for(var t=0;t<teresuCount;t++){
+    if(G.oppHand.length>0){
+      var discardIdx=Math.floor(Math.random()*G.oppHand.length);
+      var discarded=G.oppHand.splice(discardIdx,1)[0];
+      G.oppGrave.push(discarded);
+      log('w','🌑 テレス：相手ターン開始時「'+discarded.name+'」を捨てさせた');
+      // 捨てた時：自分はカードを1枚引いてもよい
+      if(G.myDeck.length>0){
+        showPopup(
+          '謀遠 テレスコ=テレス',
+          '相手が手札を1枚捨てた。\n自分はカードを1枚引いてもよい。',
+          [{label:'✅ 1枚引く',cls:'yes'},{label:'✋ 引かない',cls:'no'}],
+          function(ci){
+            if(ci===0){ myDraw(true); log('w','🌑 テレス：1枚ドロー'); }
+            else { log('w','🌑 テレス：ドローしない'); }
+          }
+        );
+      }
+    }
+  }
+  // テレス：手札0枚プレイヤーのパワーボーナスはrender側で動的計算（表示のみ）
+  if(G.oppDeck.length>0) G.oppHand.push(G.oppDeck.pop());
+
+  // マナチャージ判断：手札の中で最もコストが高いクリーチャーを出すのに必要なマナと比較
+  if(G.oppHand.length>0){
+    var maxCost=0;
+    for(var i=0;i<G.oppHand.length;i++) if(G.oppHand[i].type==='creature'&&G.oppHand[i].cost>maxCost) maxCost=G.oppHand[i].cost;
+    // マナが足りない、またはまだ序盤（7マナ以下）ならチャージする
+    var shouldCharge = G.oppMana.length < maxCost || G.oppMana.length < 7;
+    if(shouldCharge){
+      // チャージするカードを選ぶ：召喚したいカード以外の最低コストを優先
+      G.oppHand.sort(function(a,b){return a.cost-b.cost;});
+      // 手札が複数ある場合、最高コストクリーチャーはチャージしない
+      var chargeIdx=0;
+      if(G.oppHand.length>1){
+        var maxCreature=null, maxCreatureIdx=-1;
+        for(var i=0;i<G.oppHand.length;i++){
+          if(G.oppHand[i].type==='creature'&&(!maxCreature||G.oppHand[i].cost>maxCreature.cost)){
+            maxCreature=G.oppHand[i]; maxCreatureIdx=i;
+          }
+        }
+        // 最高コストクリーチャー以外で最低コストのものをチャージ
+        if(maxCreatureIdx===0&&G.oppHand.length>1) chargeIdx=1;
+      }
+      var oc=G.oppHand.splice(chargeIdx,1)[0];
+      var ocMul=(oc.civ==='m');
+      G.oppMana.push({id:oc.id,name:oc.name,cost:oc.cost,pow:oc.pow,type:oc.type,civ:ocMul?'nd':oc.civ,icon:oc.icon,eff:oc.eff,tapped:ocMul,uid:nuid()});
+      log('s','相手マナチャージ（'+G.oppMana.length+'マナ）');
+    } else {
+      log('s','相手：マナチャージせず（'+G.oppMana.length+'マナ）');
+    }
+  }
+  render();
+  setTimeout(function(){
+    // 召喚
+    var pl=[];
+    for(var i=0;i<G.oppHand.length;i++){var c=G.oppHand[i];if(c.type==='creature'&&c.cost<=G.oppMana.length)pl.push(c);}
+    pl.sort(function(a,b){return b.cost-a.cost;});
+    if(pl.length>0){
+      var s=pl[0];
+      G.oppHand=G.oppHand.filter(function(c){return c.uid!==s.uid;});
+      for(var _i=0;_i<s.cost&&_i<G.oppMana.length;_i++) G.oppMana[_i].tapped=true; // 相手マナ消費
+      G.oppBattle.push({id:s.id,name:s.name,cost:s.cost,pow:s.pow,type:s.type,civ:s.civ,icon:s.icon,eff:s.eff,uid:s.uid,tapped:false,summoned:true});
+      log('m','相手「'+s.name+'」召喚（コスト'+s.cost+'）');
+      oppSummonEff(s); render();
+    }
+    setTimeout(oppAttackLoop,600);
+  },700);
+}
+function oppAttackLoop(){
+  if(G.over) return;
+  // 召喚酔いしていない・タップしていないクリーチャーのみ攻撃可
+  var atkers=G.oppBattle.filter(function(c){return !c.tapped&&!c.summoned&&!c.sealed;});
+  if(atkers.length===0){log('s','相手ターン終了 → あなたのターン');render();safeTimeout(function(){G.phase=0;runPhase();},350);return;}
+  var atk=atkers[0]; atk.tapped=true; render();
+  safeTimeout(function(){oppAtk(atk);render();safeTimeout(oppAttackLoop,450);},400);
+}
+function oppAtk(atk){
+  var tappedMine=G.myBattle.filter(function(x){return x.tapped;});
+  // タップクリーチャーへの攻撃とシールド攻撃をランダムに選択（シールドへはいつでも可）
+  if(tappedMine.length>0&&Math.random()>.4){
+    var def=tappedMine[Math.floor(Math.random()*tappedMine.length)];
+    log('l','相手「'+atk.name+'」('+atk.pow+') → 「'+def.name+'」('+def.pow+') [タップ]');
+    battle(atk,def,false);
+  } else {
+    var idx=-1;
+    for(var i=0;i<G.myShields.length;i++){if(G.myShields[i].intact){idx=i;break;}}
+    if(idx===-1){log('l','💥 ダイレクトアタック！');endGame(false,atk.name+'のダイレクトアタック');return;}
+    var sh=G.myShields[idx]; G.myShields[idx].intact=false;
+    var rem=0; for(var i=0;i<G.myShields.length;i++) if(G.myShields[i].intact) rem++;
+    log('l','💔 シールドブレイク「'+sh.card.name+'」手札へ（残'+rem+'）');
+    G.myHand.push({id:sh.card.id,name:sh.card.name,cost:sh.card.cost,pow:sh.card.pow,type:sh.card.type,civ:sh.card.civ,icon:sh.card.icon,eff:sh.card.eff,uid:nuid(),twin:sh.card.twin||false,spellName:sh.card.spellName||'',spellCost:sh.card.spellCost||0,spellEff:sh.card.spellEff||''});
+    fxFlash(); shakeShield('msh',idx);
+    if(sh.card.eff&&sh.card.eff.indexOf('S・トリガー')!==-1){log('w','🛡 S・トリガー「'+sh.card.name+'」発動！');spellEff(sh.card,true);}
+    if(sh.card.eff&&sh.card.eff.indexOf('G・ストライク')!==-1){
+      if(G.oppBattle.length>0){
+        var gsOpts=G.oppBattle.map(function(x){return{label:x.name+'（P:'+x.pow+'）',cls:''};});
+        gsOpts.push({label:'✋ G・ストライクを使わない',cls:'no'});
+        showPopup('G・ストライク！','「'+sh.card.name+'」\n相手クリーチャーを1体選ぶ。\nこのターン、そのクリーチャーは攻撃できない。',gsOpts,function(gidx){
+          if(gidx===gsOpts.length-1){log('w','🛡 G・ストライク：使用しない');return;}
+          G.oppBattle[gidx].tapped=true;
+          log('w','🛡 G・ストライク：「'+G.oppBattle[gidx].name+'」このターン攻撃不可！');
+        });
+      }
+    }
+    // S・バック：闇のカードがシールドから手札に加わった時、捨ててコスト0で呪文を唱えられる
+    if(sh.card.civ==='d'){
+      var sbCards=[];
+      // 手札にあるS・バック持ちの呪文を探す
+      // ※今回は直接「秩序の意志」など固定カード以外にも対応できるよう汎用的に実装
+      // 実際にはシールドから来たカードを捨てて唱える→手札にS・バック呪文があればポップアップ
+      var sbSpells=G.myHand.filter(function(x){return x.type==='spell'&&x.eff&&x.eff.indexOf('S・バック')!==-1;});
+      if(sbSpells.length>0){
+        showCardSelectPopup(
+          'S・バック',
+          '「'+sh.card.name+'」（闇）をシールドから手札に加えた。\nそのカードを捨てて、S・バック持ち呪文をコスト0で唱えてもよい。',
+          sbSpells,
+          function(sel){
+            if(!sel){log('w','🛡 S・バック：使わない');return;}
+            // シールドから来たカードを捨てる
+            G.myHand=G.myHand.filter(function(x){return x.uid!==sh.card.uid;});
+            G.grave.push(sh.card);
+            // S・バック呪文を手札から取り除いて発動
+            G.myHand=G.myHand.filter(function(x){return x.uid!==sel.uid;});
+            G.grave.push(sel);
+            log('w','🛡 S・バック：「'+sh.card.name+'」を捨てて「'+sel.name+'」を無料発動！');
+            spellEff(sel,true);
+          },
+          {skipLabel:'✋ S・バックを使わない'}
+        );
+      }
+    }
+  }
+}
+
+/* ══ プレイヤー操作 ══ */
+function selCard(uid){
+  if(G.over) return;
+  G.sel=(G.sel===uid)?null:uid;
+  // チャージフェイズ中にカードを選択したらタイマーキャンセル（チャージ意思あり）
+  if(G.phase===2 && G.sel && G_chargeTimer){
+    clearTimeout(G_chargeTimer);
+    G_chargeTimer=null;
+  }
+  render(); updateBtns();
+}
+function getSelCard(){
+  for(var i=0;i<G.myHand.length;i++) if(G.myHand[i].uid===G.sel) return G.myHand[i];
+  for(var i=0;i<G.myBattle.length;i++) if(G.myBattle[i].uid===G.sel) return G.myBattle[i];
+  return null;
+}
+function updateBtns(){
+  var c=getSelCard();
+  var inH=c&&G.myHand.filter(function(x){return x.uid===c.uid;}).length>0;
+  var inB=c&&G.myBattle.filter(function(x){return x.uid===c.uid;}).length>0;
+  var si=document.getElementById('g-selinfo');
+  if(!c){
+    if(si){si.textContent='カードを選択してください'; si.style.color='';}
+    var _bsum=document.getElementById('b-sum');if(_bsum)_bsum.disabled=true;
+    var _bmna=document.getElementById('b-mna');if(_bmna)_bmna.disabled=true;
+    var _batk=document.getElementById('b-atk');if(_batk)_batk.disabled=true;
+    return;
+  }
+  var ec=G_testMode ? 0 : Math.max(0,(c.twin?Math.min(c.cost,c.spellCost||c.cost):c.cost)-G.costBonus);
+  if(si) si.innerHTML='<b>'+c.name+'</b>'+(c.twin?' <span style="font-size:.55rem;color:#aa88ff;">[ツインパクト]</span>':'')+'｜コスト'+(G_testMode?'<span style="color:#ff9900;">0(test)</span>':ec)+(c.pow>0?'｜P:'+c.pow.toLocaleString():'');
+  if(si) si.style.color='var(--gold)';
+  var av=G_testMode ? 999 : 0; if(!G_testMode) for(var i=0;i<G.myMana.length;i++) if(!G.myMana[i].tapped) av++;
+  var bSum=document.getElementById('b-sum'); if(bSum) bSum.disabled=!(inH&&G.phase===3&&av>=ec);
+  var bMna=document.getElementById('b-mna'); if(bMna) bMna.disabled=!(inH&&G.phase===2&&!G.charged);
+  // チャージフェイズでは召喚・攻撃を完全ロック
+  if(G.phase===2){
+    if(bSum) bSum.disabled=true;
+    var bAtk0=document.getElementById('b-atk'); if(bAtk0) bAtk0.disabled=true;
+    return;
+  }
+  // 攻撃可否チェック
+  var hasAbyssbell=G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
+  var isMachFighter=hasAbyssbell;
+  var baseCanAtk=inB&&!c.tapped&&G.phase===4&&(!c.summoned||isMachFighter);
+  var canAtk=false;
+  if(baseCanAtk){
+    var tappedEnemies=G.oppBattle.filter(function(x){return x.tapped;});
+    var attackableEnemies=isMachFighter?G.oppBattle:tappedEnemies;
+    var canAttackShield=!c.summoned;
+    canAtk=(attackableEnemies.length>0||canAttackShield);
+  }
+  var bAtk=document.getElementById('b-atk'); if(bAtk) bAtk.disabled=!canAtk;
+}
+function doAbyssRushCard(sel){
+  if(G.phase!==3){log('l','メインフェイズ以外ではアビスラッシュできません');return;}
+  G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
+  G.myBattle.push({id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:false,abyssRush:true,twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff});
+  log('w','🌑 アビスラッシュ：「'+sel.name+'」を墓地から召喚！このターン攻撃可・ターン終了時山札の下へ');
+  fxFloat('ラッシュ！','#ff6699');
+  mySummonEff(sel);
+  render(); updateBtns();
+}
+function doGraveSpellCard(sel){
+  if(G.phase!==3){log('l','メインフェイズ以外では使えません');return;}
+  var ec=G_testMode?0:Math.max(0,sel.cost-G.costBonus);
+  var av=G_testMode?999:0; if(!G_testMode) for(var i=0;i<G.myMana.length;i++) if(!G.myMana[i].tapped) av++;
+  if(av<ec){log('l','マナが足りません（コスト'+ec+'）');return;}
+  var paid=0;
+  if(!G_testMode) for(var i=0;i<G.myMana.length;i++){if(!G.myMana[i].tapped&&paid<ec){G.myMana[i].tapped=true;paid++;}}
+  G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
+  G.myDeck.unshift(sel);
+  log('w','🌑 墓地詠唱：「'+sel.name+'」を墓地から唱えた（コスト'+ec+'）→山札の下へ');
+  fxFloat('墓地詠唱！','#aa44ff');
+  spellEff(sel,true);
+  render(); updateBtns();
+}
+function doAbyssRush(){
+  if(G.phase!==3){log('l','メインフェイズ以外ではアビスラッシュできません');return;}
+  var rushable=G.grave.filter(function(x){return x.type==='creature'&&!x.usedAsSpell&&x.eff&&x.eff.indexOf('アビスラッシュ')!==-1;});
+  if(rushable.length===0){log('l','墓地にアビスラッシュ持ちクリーチャーがいません');return;}
+  showCardSelectPopup(
+    'アビスラッシュ',
+    '墓地からアビスラッシュ持ちクリーチャーを\n召喚する。そのターンプレイヤーを攻撃でき、\nターン終了時山札の下に置かれる。',
+    rushable,
+    function(sel){
+      if(!sel){log('w','🌑 アビスラッシュ：キャンセル');return;}
+      G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
+      var bc={id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:false,abyssRush:true,twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff};
+      G.myBattle.push(bc);
+      log('w','🌑 アビスラッシュ：「'+sel.name+'」を墓地から召喚！このターン攻撃可・ターン終了時山札の下へ');
+      fxFloat('ラッシュ！','#ff6699');
+      mySummonEff(sel);
+      render(); updateBtns();
+    }
+  );
+}
+function doGraveSpell(){
+  if(G.phase!==3){log('l','メインフェイズ以外では使えません');return;}
+  var spells=G.grave.filter(function(x){return x.type==='spell'&&x.eff&&x.eff.indexOf('墓地から唱えてもよい')!==-1;});
+  if(spells.length===0){log('l','墓地に該当する呪文がありません');return;}
+  showCardSelectPopup(
+    '墓地から唱える',
+    '墓地の呪文をコストを支払って唱える。\n唱えた後、墓地ではなく山札の下に置かれる。',
+    spells,
+    function(sel){
+      if(!sel){log('w','🌑 墓地詠唱：キャンセル');return;}
+      var ec=G_testMode?0:Math.max(0,sel.cost-G.costBonus);
+      var av=G_testMode?999:0; if(!G_testMode) for(var i=0;i<G.myMana.length;i++) if(!G.myMana[i].tapped) av++;
+      if(av<ec){log('l','マナが足りません（コスト'+ec+'）');return;}
+      var paid=0;
+      if(!G_testMode) for(var i=0;i<G.myMana.length;i++){if(!G.myMana[i].tapped&&paid<ec){G.myMana[i].tapped=true;paid++;}}
+      G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
+      // 唱えた後山札の下へ
+      G.myDeck.unshift(sel);
+      log('w','🌑 墓地詠唱：「'+sel.name+'」を墓地から唱えた（コスト'+ec+'）→山札の下へ');
+      fxFloat('墓地詠唱！','#aa44ff');
+      spellEff(sel,true);
+      render(); updateBtns();
+    }
+  );
+}
+/* ══ カードを直接プレイ（ポップアップボタンから呼ぶ） ══ */
+function chargeCardDirect(c){
+  if(G.phase!==2){log('l','チャージフェイズ以外ではチャージできません');return;}
+  if(G.charged){log('l','1Tに1枚しかチャージできません');return;}
+  G.myHand=G.myHand.filter(function(x){return x.uid!==c.uid;});
+  var _isMul=(c.civ==='m');
+  G.myMana.push({civ:_isMul?'nd':c.civ,tapped:_isMul,name:c.name,id:c.id,cost:c.cost,pow:c.pow,type:c.type,icon:c.icon,eff:c.eff});
+  if(_isMul) log('s','⚠️ 多色カードはタップ状態で置かれます');
+  G.charged=true;
+  log('s','🌿「'+c.name+'」マナチャージ（計'+G.myMana.length+'マナ）');
+  G.sel=null; render(); updateBtns();
+  safeTimeout(function(){G.phase=3;runPhase();},350);
+}
+function playCardDirect(c, asSpell, ec){
+  if(G.phase!==3){log('l','メインフェイズ以外では使えません');return;}
+  // マナを支払う
+  var paid=0;
+  if(!G_testMode) for(var i=0;i<G.myMana.length;i++){if(!G.myMana[i].tapped&&paid<ec){G.myMana[i].tapped=true;paid++;}}
+  G.costBonus=0;
+  G.myHand=G.myHand.filter(function(x){return x.uid!==c.uid;});
+  G.sel=null;
+  if(!asSpell && c.type==='creature'){
+    // クリーチャーとして召喚
+    G.myBattle.push({id:c.id,name:c.name,cost:c.cost,pow:c.pow,type:c.type,civ:c.civ,icon:c.icon,eff:c.eff,uid:c.uid,tapped:false,summoned:true,twin:c.twin,spellName:c.spellName,spellCost:c.spellCost,spellEff:c.spellEff});
+    log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
+    fxFloat('召喚！','#88ff88');
+    mySummonEff(c);
+  } else if(asSpell && c.twin){
+    // ツインパクトの呪文面
+    G.grave.push(Object.assign({},c,{usedAsSpell:true}));
+    log('m','💫「'+c.spellName+'」発動！（コスト'+ec+'）');
+    fxFloat('呪文！','#88aaff');
+    var spellCard={id:c.id,name:c.spellName,cost:c.spellCost,pow:0,type:'spell',civ:c.civ,icon:c.icon,eff:c.spellEff,uid:c.uid};
+    spellEff(spellCard,true);
+  } else {
+    // 通常呪文
+    G.grave.push(c);
+    log('m','💫「'+c.name+'」発動！（コスト'+ec+'）');
+    fxFloat('呪文！','#88aaff');
+    spellEff(c,true);
+  }
+  render(); updateBtns();
+}
+
+function doCharge(){
+  if(G.phase!==2){log('l','チャージフェイズ以外ではチャージできません');return;}
+  var c=null; for(var i=0;i<G.myHand.length;i++) if(G.myHand[i].uid===G.sel){c=G.myHand[i];break;}
+  if(!c){log('l','手札のカードを選択してください');return;}
+  if(G.charged){log('l','1Tに1枚しかチャージできません');return;}
+  G.myHand=G.myHand.filter(function(x){return x.uid!==c.uid;});
+  var _isMul=(c.civ==='m');
+  G.myMana.push({civ:_isMul?'nd':c.civ,tapped:_isMul,name:c.name,id:c.id,cost:c.cost,pow:c.pow,type:c.type,icon:c.icon,eff:c.eff});
+  if(_isMul) log('s','⚠️ 多色カードはタップ状態で置かれます');
+  G.charged=true;
+  log('s','🌿「'+c.name+'」マナチャージ（計'+G.myMana.length+'マナ）');
+  G.sel=null; render(); updateBtns();
+  // チャージ後は自動でメインフェイズへ移行
+  safeTimeout(function(){G.phase=3;runPhase();},350);
+}
+function doSummon(){
+  if(G.phase!==3){log('l','メインフェイズ以外では召喚できません');return;}
+  var c=null; for(var i=0;i<G.myHand.length;i++) if(G.myHand[i].uid===G.sel){c=G.myHand[i];break;}
+  if(!c){log('l','手札のカードを選択してください');return;}
+
+  // ツインパクトの場合は使い方を選択
+  if(c.twin){
+    var ecC=G_testMode ? 0 : Math.max(0,c.cost-G.costBonus);
+    var ecS=G_testMode ? 0 : Math.max(0,c.spellCost-G.costBonus);
+    var av=G_testMode ? 999 : 0; if(!G_testMode) for(var i=0;i<G.myMana.length;i++) if(!G.myMana[i].tapped) av++;
+    var canC=(av>=ecC), canS=(av>=ecS);
+    var opts=[];
+    if(canC) opts.push({label:'⚔️ クリーチャーとして召喚（コスト'+(G_testMode?'0(test)':ecC)+'）\n'+c.name+' P:'+c.pow, cls:'yes'});
+    if(canS) opts.push({label:'💫 呪文として使う（コスト'+(G_testMode?'0(test)':ecS)+'）\n'+c.spellName, cls:''});
+    if(opts.length===0){log('l','マナが足りません！');return;}
+    showPopup('ツインパクト：'+c.name, 'クリーチャーとして召喚するか\n呪文として使うかを選ぶ。', opts, function(idx){
+      var useAsSpell = (opts[idx].label.indexOf('呪文')===0 || (!canC&&canS)) ? true : (canC && idx===0 ? false : true);
+      var asSpell = canC ? (idx===1 && canS) : true;
+      var ec = asSpell ? ecS : ecC;
+      var paid=0;
+      if(!G_testMode) for(var i=0;i<G.myMana.length;i++){if(!G.myMana[i].tapped&&paid<ec){G.myMana[i].tapped=true;paid++;}}
+      G.costBonus=0;
+      G.myHand=G.myHand.filter(function(x){return x.uid!==c.uid;});
+      if(asSpell){
+        G.grave.push(Object.assign({},c,{usedAsSpell:true}));
+        log('m','💫「'+c.spellName+'」発動！（コスト'+ec+'）');
+        fxFloat('呪文！','#88aaff');
+        // カードごとに適切な呪文効果を呼ぶ
+        var spellCard={id:c.id,name:c.spellName,cost:c.spellCost,pow:0,type:'spell',civ:c.civ,icon:c.icon,eff:c.spellEff,uid:c.uid};
+        spellEff(spellCard,true);
+      } else {
+        G.myBattle.push({id:c.id,name:c.name,cost:c.cost,pow:c.pow,type:c.type,civ:c.civ,icon:c.icon,eff:c.eff,uid:c.uid,tapped:false,summoned:true,twin:c.twin,spellName:c.spellName,spellCost:c.spellCost,spellEff:c.spellEff});
+        log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
+        log('m','✨ '+c.eff);
+        fxFloat('召喚！','#88ff88');
+        mySummonEff(c);
+      }
+      G.sel=null; render(); updateBtns();
+    });
+    return;
+  }
+
+  var ec=G_testMode ? 0 : Math.max(G.costBonus>0?1:0,(c.cost-G.costBonus));
+  var av=G_testMode ? 999 : 0; if(!G_testMode) for(var i=0;i<G.myMana.length;i++) if(!G.myMana[i].tapped) av++;
+  if(av<ec){log('l','マナが足りません！');return;}
+  var paid=0;
+  if(!G_testMode) for(var i=0;i<G.myMana.length;i++){if(!G.myMana[i].tapped&&paid<ec){G.myMana[i].tapped=true;paid++;}}
+  G.costBonus=0;
+  G.myHand=G.myHand.filter(function(x){return x.uid!==c.uid;});
+  if(c.type==='creature'){
+    G.myBattle.push({id:c.id,name:c.name,cost:c.cost,pow:c.pow,type:c.type,civ:c.civ,icon:c.icon,eff:c.eff,uid:c.uid,tapped:false,summoned:true});
+    log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
+    log('m','✨ '+c.eff);
+    fxFloat('召喚！','#88ff88');
+    mySummonEff(c);
+  } else {
+    G.grave.push(c);
+    log('m','💫「'+c.name+'」発動！（コスト'+ec+'）');
+    spellEff(c,true);
+    fxFloat('呪文！','#88aaff');
+  }
+  G.sel=null; render(); updateBtns();
+}
+
+/* ══════════════════════════════════════════
+   CARD_EFFECTS パッケージ
+   各カードの効果を onSummon / onSpell / onOppSummon に集約
+   ・onSummon(c)   : 自分がクリーチャーを召喚した時
+   ・onSpell(c)    : 自分が呪文（またはツイン呪文面）を使った時
+   ・onOppSummon(c): 相手がクリーチャーを召喚した時（AI側）
+   ══════════════════════════════════════════ */
+var CARD_EFFECTS = {
+
+  /* ────── ベラドンナ ────── */
+  belladonna: {
+    onSummon: function(c){
+      var bellUid=c.uid;
+      var canHands=G.oppHand.length>0, canMana=G.myDeck.length>0;
+      showPopup('悪魔妖精 ベラドンナ',
+        'このクリーチャーを破壊してもよい。\nそうしたら①②のどちらかを選ぶ。\n\nこのクリーチャーを破壊しますか？',
+        [{label:'✅ 破壊する',cls:'yes'},{label:'✋ 破壊しない',cls:'no'}],
+        function(idx){
+          if(idx===1){log('w','💠 ベラドンナ：破壊しない');render();return;}
+          // 破壊
+          var target=null;
+          for(var bi=0;bi<G.myBattle.length;bi++){if(G.myBattle[bi].uid===bellUid){target=G.myBattle[bi];break;}}
+          if(!target){for(var bi=0;bi<G.myBattle.length;bi++){if(G.myBattle[bi].id==='belladonna'){target=G.myBattle[bi];break;}}}
+          if(target){G.myBattle=G.myBattle.filter(function(x){return x.uid!==target.uid;});G.grave.push(target);}
+          render();
+          // 効果選択
+          var opts=[];
+          if(canHands) opts.push({label:'① 相手の手札を1枚見ないで選び捨てさせる',cls:''});
+          if(canMana)  opts.push({label:'② 山札の上から1枚をマナゾーンに置く',cls:''});
+          if(opts.length===0){log('w','💠 ベラドンナ：効果対象なし');return;}
+          function doBella(choice){
+            if(opts[choice]&&opts[choice].label.indexOf('①')>=0){
+              if(G.oppHand.length>0){var ri=Math.floor(Math.random()*G.oppHand.length);var d=G.oppHand.splice(ri,1)[0];G.oppGrave.push(d);}
+              log('w','💠 ベラドンナ：① 相手手札を1枚捨てさせた');
+            } else {
+              var top=G.myDeck.pop(); var im=(top.civ==='m');
+              G.myMana.push({civ:im?'nd':top.civ,tapped:im,name:top.name,id:top.id,cost:top.cost,pow:top.pow,type:top.type,icon:top.icon,eff:top.eff});
+              log('w','💠 ベラドンナ：② 「'+top.name+'」をマナゾーンへ'+(im?' (多色・タップ)':''));
+            }
+            render();
+          }
+          if(opts.length===1){doBella(0);return;}
+          showPopup('悪魔妖精 ベラドンナ','①②のどちらかを選ぶ。',opts,function(ch){doBella(ch);});
+        }
+      );
+    }
+  },
+
+  /* ────── マーダン=ロウ ────── */
+  maardan: {
+    onSummon: function(c){
+      var crs=G.oppHand.filter(function(x){return x.type==='creature';});
+      if(crs.length===0){log('w','🌑 マーダン：相手手札にクリーチャーなし');return;}
+      if(G.oppHand.length===1&&crs.length===1){
+        G.oppHand=G.oppHand.filter(function(x){return x.uid!==crs[0].uid;});
+        G.oppGrave.push(crs[0]);
+        log('w','🌑 マーダン：「'+crs[0].name+'」を捨てさせた');return;
+      }
+      var allHand=G.oppHand.map(function(x){return Object.assign({},x,{_disabled:x.type!=='creature'});});
+      showCardSelectPopup('深淵の壊炉 マーダン=ロウ',
+        '',
+        allHand,
+        function(sel){
+          if(!sel)return;
+          G.oppHand=G.oppHand.filter(function(x){return x.uid!==sel.uid;});
+          G.oppGrave.push(sel);
+          log('w','🌑 マーダン：「'+sel.name+'」を捨てさせた');
+        }
+      );
+    },
+    onOppSummon: function(c){log('l','相手マーダン：あなたの手札が1枚減った');}
+  },
+
+  /* ────── フットレス＝トレース ────── */
+  footless: {
+    onSummon: function(c){log('w','🌑 フットレス：場に出た（ターン終了時に墓地肥やし＋回収）');},
+    onSpell:  function(c){log('w','🌑 力が欲しいか？：アビス・メクレイド5！');execMekleido5(true);}
+  },
+
+  /* ────── テレスコ=テレス ────── */
+  teresu: {
+    onSummon: function(c){log('w','🌑 テレス：場に出た（相手ターン開始時にハンデス発動）');},
+    onOppSummon: function(c){log('l','相手テレス：次の相手ターン開始時からハンデス発動');}
+  },
+
+  /* ────── ア:エヌ:マクア ────── */
+  aenumakua: {
+    onSummon: function(c){
+      showPopup('ア:エヌ:マクア','出た時：次のうちいずれか1つを選ぶ。',
+        [{label:'① 山札上2枚をタップインしマナゾーンへ。その後マナ1枚を手札へ',cls:''},
+         {label:'② プレイヤーを1人選ぶ。その墓地を山札の下に置く',cls:''},
+         {label:'③ 相手のコスト5以下の非クリーチャーエレメントを全てマナゾーンへ',cls:''}],
+        function(idx){
+          if(idx===0){
+            var added=[];
+            for(var i=0;i<2;i++){
+              if(G.myDeck.length>0){
+                var top=G.myDeck.pop(); var im=(top.civ==='m');
+                G.myMana.push({civ:im?'nd':top.civ,tapped:true,name:top.name,id:top.id,cost:top.cost,pow:top.pow,type:top.type,icon:top.icon,eff:top.eff,uid:nuid()});
+                added.push(top.name);
+              }
+            }
+            log('w','🌿 マクア①：「'+added.join('」「')+'」をタップインマナへ');
+            if(G.myMana.length>0){
+              var manaCards=G.myMana.map(function(m,i){return{label:m.name+'（'+(m.tapped?'タップ':'アンタップ')+'）',cls:'',idx:i};});
+              showPopup('ア:エヌ:マクア①','マナゾーンからカードを1枚手札に戻す。',manaCards,function(mi){
+                var m=G.myMana[mi]; G.myMana.splice(mi,1);
+                G.myHand.push({id:m.id||'',name:m.name,cost:m.cost||0,pow:m.pow||0,type:m.type||'spell',civ:m.civ==='nd'?'m':m.civ,icon:m.icon||'🌿',eff:m.eff||'',uid:nuid()});
+                log('w','🌿 マクア①：「'+m.name+'」をマナから手札へ');
+              });
+            }
+          } else if(idx===1){
+            showPopup('ア:エヌ:マクア②','墓地を山札の下に置くプレイヤーを選ぶ。',
+              [{label:'自分の墓地（'+G.grave.length+'枚）を山札の下へ',cls:''},
+               {label:'相手の墓地（'+G.oppGrave.length+'枚）を山札の下へ',cls:''}],
+              function(pi){
+                if(pi===0){var g=G.grave.slice();G.grave=[];for(var i=0;i<g.length;i++)G.myDeck.unshift(g[i]);log('w','🌿 マクア②：自分墓地'+g.length+'枚を山札の下へ');}
+                else{var og=G.oppGrave.slice();G.oppGrave=[];for(var i=0;i<og.length;i++)G.oppDeck.unshift(og[i]);log('w','🌿 マクア②：相手墓地'+og.length+'枚を山札の下へ');}
+              });
+          } else {
+            log('w','🌿 マクア③：相手のコスト5以下非クリーチャーエレメントをマナへ（このシミュでは適用対象なし）');
+          }
+        }
+      );
+    }
+  },
+
+  /* ────── ティンパニ=シンバリー ────── */
+  tinpani: {
+    onSummon: function(c){
+      showPopup('ティンパニ=シンバリー ヨビニオン',
+        '山札の上から、コスト'+c.cost+'未満のクリーチャーが\n出るまで表向きにしてもよい。残りは山札の下へ。',
+        [{label:'✅ ヨビニオン発動',cls:'yes'},{label:'✋ 発動しない',cls:'no'}],
+        function(vi){
+          if(vi===1){log('w','💠 ティンパニ：ヨビニオン発動しない');return;}
+          var revealed=[],found=null;
+          while(G.myDeck.length>0){
+            var top=G.myDeck.pop(); revealed.push(top);
+            if(top.type==='creature'&&top.cost<c.cost){found=top;break;}
+          }
+          if(!found){
+            log('w','💠 ティンパニ：ヨビニオン 対象なし');
+            revealed.sort(function(){return Math.random()-.5;});
+            for(var i=0;i<revealed.length;i++)G.myDeck.unshift(revealed[i]);
+            render();return;
+          }
+          log('w','💠 ティンパニ：ヨビニオン「'+found.name+'」を発見！バトルゾーンへ');
+          G.myBattle.push({id:found.id,name:found.name,cost:found.cost,pow:found.pow,type:found.type,civ:found.civ,icon:found.icon,eff:found.eff,uid:nuid(),tapped:false,summoned:true,twin:found.twin,spellName:found.spellName,spellCost:found.spellCost,spellEff:found.spellEff});
+          mySummonEff(found); checkJagaisuto(found);
+          var rest=revealed.filter(function(x){return x.uid!==found.uid;});
+          rest.sort(function(){return Math.random()-.5;});
+          for(var i=0;i<rest.length;i++)G.myDeck.unshift(rest[i]);
+          log('w','💠 ティンパニ：残り'+rest.length+'枚をシャッフルして山札の下へ');
+          render();updateBtns();
+        }
+      );
+    },
+    onOppSummon: function(c){
+      var found=null,revealed=[];
+      while(G.oppDeck.length>0){var top=G.oppDeck.pop();revealed.push(top);if(top.type==='creature'&&top.cost<c.cost){found=top;break;}}
+      if(found){
+        G.oppBattle.push({id:found.id,name:found.name,cost:found.cost,pow:found.pow,type:found.type,civ:found.civ,icon:found.icon,eff:found.eff,uid:nuid(),tapped:false,summoned:true});
+        log('l','相手ティンパニ：ヨビニオン「'+found.name+'」召喚！');oppSummonEff(found);
+      }
+      var rest=revealed.filter(function(x){return !found||x.uid!==found.uid;});
+      rest.sort(function(){return Math.random()-.5;});
+      for(var i=0;i<rest.length;i++)G.oppDeck.unshift(rest[i]);
+    }
+  },
+
+  /* ────── ドミー=ゾー ────── */
+  dommy: {
+    onSummon: function(c){
+      showPopup('ドミー=ゾー','自分の山札の上から5枚を墓地に置いてもよい。',
+        [{label:'✅ 5枚墓地に置く',cls:'yes'},{label:'✋ 置かない',cls:'no'}],
+        function(di){
+          if(di===1){log('w','🌑 ドミー：墓地に置かない');return;}
+          var milled=[];
+          for(var i=0;i<5;i++){if(G.myDeck.length>0){var top=G.myDeck.pop();G.grave.push(top);milled.push(top.name);}}
+          log('w','🌑 ドミー：'+milled.length+'枚墓地へ（'+milled.slice(0,3).join('、')+(milled.length>3?'…':'')+'）');
+        }
+      );
+    },
+    onSpell: function(c){
+      if(G.myDeck.length>0){
+        var top=G.myDeck.pop(); var im=(top.civ==='m');
+        G.myMana.push({civ:im?'nd':top.civ,tapped:im,name:top.name,id:top.id,cost:top.cost,pow:top.pow,type:top.type,icon:top.icon,eff:top.eff});
+        log('w','🌑 倒したいか？：「'+top.name+'」をマナゾーンへ'+(im?' (多色・タップ)':''));
+      } else {log('w','🌑 倒したいか？：山札なし');}
+    },
+    onOppSummon: function(c){
+      var milled=0;
+      for(var i=0;i<5;i++){if(G.oppDeck.length>0){G.oppGrave.push(G.oppDeck.pop());milled++;}}
+      log('l','相手ドミー：'+milled+'枚墓地へ');
+    }
+  },
+
+  /* ────── 邪幽 ジャガイスト ────── */
+  jagaisuto: {
+    onSummon: function(c){
+      if(G.myHand.length<2){
+        log('w','🌑 ジャガイスト：手札が2枚未満のため発動不可');
+        return;
+      }
+      showCardSelectPopup(
+        '邪幽 ジャガイスト',
+        '手札から2枚選んで捨てる。そうしたらアビス・メクレイド5。',
+        G.myHand,
+        function(sels){
+          if(!sels||sels.length<2){log('w','🌑 ジャガイスト：キャンセル');return;}
+          for(var i=0;i<sels.length;i++){
+            G.myHand=G.myHand.filter(function(x){return x.uid!==sels[i].uid;});
+            G.grave.push(sels[i]);
+          }
+          log('w','🌑 ジャガイスト：「'+sels[0].name+'」「'+sels[1].name+'」を捨てた → アビス・メクレイド5！');
+          execMekleido5(true);
+        },
+        {maxSelect:2}
+      );
+    },
+    onOppSummon: function(c){
+      if(G.oppHand.length>=2){
+        var d1=G.oppHand.splice(0,1)[0];G.oppGrave.push(d1);
+        var d2=G.oppHand.splice(0,1)[0];G.oppGrave.push(d2);
+        log('l','相手ジャガイスト：手札2枚捨ててメクレイド5！');
+        var abyssIds2=['maardan','footless','teresu','aenumakua','tinpani','dommy','jagaisuto','abyssbell'];
+        var tgts=G.oppGrave.filter(function(x){return x.type==='creature'&&x.cost<=5&&abyssIds2.indexOf(x.id)>=0;});
+        if(tgts.length>0){
+          tgts.sort(function(a,b){return b.cost-a.cost;});
+          var jt=tgts[0]; G.oppGrave=G.oppGrave.filter(function(x){return x.uid!==jt.uid;});
+          G.oppBattle.push({id:jt.id,name:jt.name,cost:jt.cost,pow:jt.pow,type:jt.type,civ:jt.civ,icon:jt.icon,eff:jt.eff,uid:nuid(),tapped:false,summoned:true});
+          log('l','相手メクレイド5：「'+jt.name+'」墓地から召喚！');oppSummonEff(jt);
+        }
+      }
+    }
+  },
+
+  /* ────── アビスベル=覇=ロード（召喚時効果なし、ターン終了時はendTurnで処理） ────── */
+  abyssbell: {},
+
+  /* ────── フェアリー･Re:ライフ ────── */
+  fairy_life: {
+    onSpell: function(c){
+      if(G.myDeck.length>0){
+        var top=G.myDeck.pop(); var im=(top.civ==='m');
+        G.myMana.push({civ:im?'nd':top.civ,tapped:im,name:top.name,id:top.id,cost:top.cost,pow:top.pow,type:top.type,icon:top.icon,eff:top.eff});
+        log('w','🌿 Re:ライフ：「'+top.name+'」をマナゾーンへ'+(im?' (多色・タップ)':''));
+      } else {log('w','🌿 Re:ライフ：山札なし');}
+    }
+  },
+
+  /* ────── フェアリー･ギフト ────── */
+  f_gift: {
+    onSpell: function(c){G.costBonus=3;log('w','🌿 ギフト：次の召喚コスト-3（最低1）');}
+  },
+
+  /* ────── 秩序の意志 ────── */
+  chitsujoi: {
+    onSpell: function(c){
+      if(G.oppBattle.length===0){log('w','✨ 秩序：相手クリーチャーなし');return;}
+      var targets=G.oppBattle.filter(function(x){return !x.sealed;});
+      if(targets.length===0){log('w','✨ 秩序：封印可能なクリーチャーなし');return;}
+      showCardSelectPopup('秩序の意志',
+        '相手のクリーチャーを1体選び封印する。\n（封印中そのクリーチャーは無視される）',
+        targets,
+        function(sel){
+          if(!sel)return;
+          for(var i=0;i<G.oppBattle.length;i++){
+            if(G.oppBattle[i].uid===sel.uid){G.oppBattle[i].sealed=true;log('w','✨ 秩序：「'+sel.name+'」を封印！');break;}
+          }
+        }
+      );
+    }
+  },
+
+  /* ────── 絶望と反魂と滅殺の決断 ────── */
+  ketsu: {
+    onSpell: function(c){
+      var ketsuOpts=[
+        {label:'① 相手は手札を1枚選んで捨てる',cls:''},
+        {label:'② コスト4以下の闇クリーチャーを墓地から出す',cls:''},
+        {label:'③ 相手クリーチャー1体のパワーをこのターン-4000',cls:''},
+      ];
+      function doKetsuChoice(choiceNum,cb){
+        showPopup('絶望と反魂と滅殺の決断',choiceNum+'回目の選択（同じものを選んでもよい）',ketsuOpts,function(ki){
+          if(ki===0){
+            if(G.oppHand.length>0){var _di=Math.floor(Math.random()*G.oppHand.length);var _dc=G.oppHand.splice(_di,1)[0];G.oppGrave.push(_dc);log('w','🌑 決断①：相手手札「'+_dc.name+'」を捨てさせた');}
+            else log('w','🌑 決断①：相手手札なし');
+          } else if(ki===1){
+            var dark4=G.grave.filter(function(x){return x.type==='creature'&&!x.usedAsSpell&&x.civ==='d'&&x.cost<=4;});
+            if(dark4.length===0){log('w','🌑 決断②：対象なし');cb();return;}
+            showCardSelectPopup('決断②','コスト4以下の闇クリーチャーを墓地から出す。',dark4,function(sel){
+              if(!sel){log('w','🌑 決断②：スキップ');cb();return;}
+              G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
+              G.myBattle.push({id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:true});
+              log('w','🌑 決断②：「'+sel.name+'」を墓地から召喚！');mySummonEff(sel);cb();
+            },{skipLabel:'✋ 出さない'});
+            return;
+          } else {
+            if(G.oppBattle.length===0){log('w','🌑 決断③：相手クリーチャーなし');cb();return;}
+            showCardSelectPopup('決断③','相手クリーチャー1体のパワーをこのターン-4000する。',G.oppBattle,function(sel){
+              if(!sel){log('w','🌑 決断③：スキップ');cb();return;}
+              for(var i=0;i<G.oppBattle.length;i++){
+                if(G.oppBattle[i].uid===sel.uid){
+                  G.oppBattle[i].pow=Math.max(0,G.oppBattle[i].pow-4000);
+                  log('w','🌑 決断③：「'+sel.name+'」パワー-4000（→'+G.oppBattle[i].pow+'）');
+                  if(G.oppBattle[i].pow<=0){G.oppGrave.push(G.oppBattle[i]);G.oppBattle.splice(i,1);log('w','🌑 決断③：パワー0以下で破壊！');}
+                  break;
+                }
+              }
+              cb();
+            });
+            return;
+          }
+          cb();
+        });
+      }
+      doKetsuChoice(1,function(){doKetsuChoice(2,function(){});});
+    }
+  }
+
+}; /* end CARD_EFFECTS */
+
+/* ══ 効果ディスパッチャー ══ */
+function mySummonEff(c){
+  if(c.type==='creature') G.turnCreatureCount=(G.turnCreatureCount||0)+1;
+  // ティンパニ：ちょうど2体目トリガー
+  if(c.type==='creature'&&G.turnCreatureCount===2&&c.id!=='tinpani'){
+    var tinpanis=G.myBattle.filter(function(x){return x.id==='tinpani';});
+    if(tinpanis.length>0){
+      var tp=tinpanis[0];
+      showPopup('ティンパニ=シンバリー',
+        '自分の'+G.turnCreatureCount+'体目のクリーチャーが出た！\nティンパニを破壊してもよい。\nそうしたら相手はクリーチャー1体を選び破壊する。',
+        [{label:'⚡ ティンパニを自壊させる',cls:'yes'},{label:'✋ 発動しない',cls:'no'}],
+        function(ti){
+          if(ti===1){log('w','💠 ティンパニ：発動しない');return;}
+          G.myBattle=G.myBattle.filter(function(x){return x.uid!==tp.uid;});G.grave.push(tp);
+          log('w','💠 ティンパニ：自壊！相手はクリーチャーを1体選んで破壊する');
+          if(G.oppBattle.length>0){
+            showCardSelectPopup('ティンパニ効果','相手はクリーチャーを1体選んで破壊する。',G.oppBattle,function(sel){
+              if(!sel)return;
+              G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==sel.uid;});G.oppGrave.push(sel);
+              log('l','💀 ティンパニ効果：「'+sel.name+'」破壊！');render();
+            });
+          }
+          render();
+        }
+      );
+    }
+  }
+  var eff=CARD_EFFECTS[c.id];
+  if(eff&&eff.onSummon) eff.onSummon(c);
+}
+
+function spellEff(c,isMe){
+  if(!isMe){render();return;}
+  var eff=CARD_EFFECTS[c.id];
+  if(eff&&eff.onSpell) eff.onSpell(c);
+  render();
+}
+
+function oppSummonEff(c){
+  var eff=CARD_EFFECTS[c.id];
+  if(eff&&eff.onOppSummon) eff.onOppSummon(c);
+}
+
+/* ══ ジャガイスト：山札からクリーチャーが出た時の効果チェック ══ */
+function checkJagaisuto(deckCreature){
+  // ジャガイストが場にいて、かつ各ターン1度まで
+  if(G.jagaisutoUsed) return;
+  var jags=G.myBattle.filter(function(x){return x.id==='jagaisuto';});
+  if(jags.length===0) return;
+
+  var abyssIds=['maardan','footless','teresu','aenumakua','tinpani','dommy','jagaisuto','abyssbell'];
+  // 墓地からコスト≦deckCreature.costのアビスクリーチャーを探す
+  var targets=G.grave.filter(function(x){
+    return x.type==='creature'&&!x.usedAsSpell&&abyssIds.indexOf(x.id)>=0&&x.cost<=deckCreature.cost;
+  });
+  if(targets.length===0){log('w','🌑 ジャガイスト：墓地に対象アビスなし（コスト'+deckCreature.cost+'以下）');return;}
+
+  G.jagaisutoUsed=true;
+  showCardSelectPopup(
+    '邪幽 ジャガイスト',
+    '「'+deckCreature.name+'」（コスト'+deckCreature.cost+'）が山札から出た！\nコスト'+deckCreature.cost+'以下のアビスを墓地から1体出してもよい。\nそのアビスはこのターン相手プレイヤーを攻撃でき\n攻撃したらターン終了時に山札の下へ。',
+    targets,
+    function(sel){
+      if(!sel){log('w','🌑 ジャガイスト：墓地から出さない');G.jagaisutoUsed=false;return;}
+      G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
+      // abyssRush:trueで出す（攻撃可・ターン終了時山札の下へ）
+      G.myBattle.push({
+        id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,
+        civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),
+        tapped:false,summoned:false,abyssRush:true,
+        twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff
+      });
+      log('w','🌑 ジャガイスト：「'+sel.name+'」を墓地から召喚！このターン相手プレイヤーを攻撃可');
+      mySummonEff(sel);
+      render(); updateBtns();
+    },
+    {skipLabel:'✋ 出さない'}
+  );
+}
+
+/* ══ アビス・メクレイド5 ══ */
+function execMekleido5(isMe){
+  var deck = isMe ? G.myDeck : G.oppDeck;
+  if(deck.length===0){log('w','メクレイド5：山札なし');return;}
+  // 上から3枚を見る
+  var top3=[];
+  for(var i=0;i<3&&deck.length>0;i++) top3.push(deck.pop());
+  var abyssIds=['maardan','footless','teresu','aenumakua','tinpani','dommy','jagaisuto','abyssbell'];
+  var targets=top3.filter(function(x){return x.cost<=5&&abyssIds.indexOf(x.id)>=0;});
+  var rest=top3.filter(function(x){return targets.indexOf(x)<0;});
+  log('w','🌑 メクレイド5：山札上3枚=['+(top3.map(function(x){return x.name+'('+x.cost+')';}).join(',')||'なし')+'] 対象='+targets.length+'枚');
+  if(isMe){
+    if(targets.length===0){
+      // 対象なしでも3枚を見せてから山札の下へ
+      var displayNone=top3.map(function(x){return Object.assign({},x,{_disabled:true});});
+      showCardSelectPopup(
+        'アビス・メクレイド5',
+        '山札上3枚を確認。コスト5以下のアビスなし。\n残りは山札の下へ。',
+        displayNone,
+        function(){
+          for(var i=top3.length-1;i>=0;i--) deck.unshift(top3[i]);
+          render();
+        },
+        {skipLabel:'✅ 確認（山札の下へ）'}
+      );
+      return;
+    }
+    // top3全体を表示（アビス以外はdisabled）
+    var displayList=top3.map(function(x){
+      var isTarget=targets.indexOf(x)>=0;
+      return Object.assign({},x,{_disabled:!isTarget});
+    });
+    showCardSelectPopup(
+      'アビス・メクレイド5',
+      '山札上3枚を確認。コスト5以下のアビスを\n1体タダ召喚。残りは山札の下へ。\n（暗いカードは選択不可）',
+      displayList,
+      function(sel){
+        var putBack = sel ? top3.filter(function(x){return x.uid!==sel.uid;}) : top3;
+        for(var i=putBack.length-1;i>=0;i--) deck.unshift(putBack[i]);
+        if(!sel){log('w','🌑 メクレイド5：使わない');return;}
+        log('w','🌑 メクレイド5：「'+sel.name+'」をタダ召喚！');
+        if(sel.type==='creature'){
+          G.myBattle.push({id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:true,twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff});
+          mySummonEff(sel);
+          checkJagaisuto(sel);
+        } else {
+          G.grave.push(sel);
+          spellEff(sel,true);
+        }
+        render();
+      },
+      {skipLabel:'✋ 使わない'}
+    );
+  } else {
+    // AI：コスト5以下の最高コストアビスを自動で選ぶ
+    if(targets.length>0){
+      targets.sort(function(a,b){return b.cost-a.cost;});
+      var chosen=targets[0];
+      var putBack=top3.filter(function(x){return x.uid!==chosen.uid;});
+      for(var i=putBack.length-1;i>=0;i--) deck.unshift(putBack[i]);
+      log('l','相手メクレイド5：「'+chosen.name+'」タダ召喚！');
+      if(chosen.type==='creature'){
+        G.oppBattle.push({id:chosen.id,name:chosen.name,cost:chosen.cost,pow:chosen.pow,type:chosen.type,civ:chosen.civ,icon:chosen.icon,eff:chosen.eff,uid:nuid(),tapped:false,summoned:true});
+        oppSummonEff(chosen);
+      }
+    } else {
+      for(var i=top3.length-1;i>=0;i--) deck.unshift(top3[i]);
+    }
+  }
+}
+
+/* ══ カード選択ポップアップ ══
+   showCardSelectPopup(title, desc, cards, callback, opts)
+   cards: [{id, name, cost, pow, civ, icon, eff, ...}] カードオブジェクト
+   callback(selectedCard) or callback(null) でキャンセル/スキップ
+   opts: { skipLabel: 'スキップラベル文字列' or null（スキップ不可） }
+*/
+var G_cardSelCallback = null;
+var G_cardSelSelected = null; // 単数選択用（後方互換）
+var G_cardSelMulti = [];      // 複数選択用
+var G_cardSelMax = 1;         // 最大選択数
+var G_cardSelCards = [];
+
+function showCardSelectPopup(title, desc, cards, callback, opts){
+  G_popupWaiting=true;
+  opts = opts || {};
+  G_cardSelCallback = callback;
+  G_cardSelSelected = null;
+  G_cardSelMulti = [];
+  G_cardSelMax = opts.maxSelect || 1;
+  G_cardSelCards = cards;
+
+  document.getElementById('csp-title').textContent = title;
+  document.getElementById('csp-desc').textContent = desc || '';
+
+  var container = document.getElementById('csp-cards');
+  container.innerHTML = '';
+
+  function updateConfirmBtn(){
+    var ok = G_cardSelMulti.length === G_cardSelMax;
+    document.getElementById('csp-confirm').disabled = !ok;
+    document.getElementById('csp-title').textContent = title +
+      (G_cardSelMax>1 ? '（'+G_cardSelMulti.length+'/'+G_cardSelMax+'枚選択）' : '');
+  }
+
+  // カード一覧を描画
+  cards.forEach(function(c, i){
+    if(c._header){
+      var h=document.createElement('div');
+      h.style.cssText='width:100%;font-size:.58rem;color:var(--muted);letter-spacing:.1em;padding:4px 2px 2px;margin-top:2px;border-top:1px solid var(--bdr);flex-basis:100%;';
+      h.textContent=c.name; container.appendChild(h); return;
+    }
+    var d = document.createElement('div');
+    if(c._disabled){
+      d.className = 'csp-card';
+      d.style.cssText='opacity:.3;filter:grayscale(.8);cursor:not-allowed;';
+      if(CARD_IMAGES[c.id]) d.innerHTML='<img src="'+CARD_IMAGES[c.id]+'" alt="'+c.name+'"><div class="csp-card-name">'+c.name+'</div>';
+      else{ var cb2={n:'#1a3a1a',d:'#1a0a2e',m:'linear-gradient(135deg,#1a3a1a,#1a0a2e)'}; d.innerHTML='<div class="csp-card-icon" style="background:'+(cb2[c.civ]||'#111')+';">'+(c.icon||'🃏')+'</div><div class="csp-card-name">'+c.name+'</div>'; }
+      (function(card){bindDoubleTap(d,function(e){e.stopPropagation();openCardModal(card);});})(c);
+      container.appendChild(d); return;
+    }
+    d.className = 'csp-card';
+    if(CARD_IMAGES[c.id]) d.innerHTML='<img src="'+CARD_IMAGES[c.id]+'" alt="'+c.name+'"><div class="csp-card-name">'+c.name+'</div>';
+    else{ var cb3={n:'#1a3a1a',d:'#1a0a2e',m:'linear-gradient(135deg,#1a3a1a,#1a0a2e)'}; d.innerHTML='<div class="csp-card-icon" style="background:'+(cb3[c.civ]||'#111')+';">'+(c.icon||'🃏')+'</div><div class="csp-card-name">'+c.name+'</div>'; }
+    (function(idx, card, el){
+      el.onclick = function(){
+        if(G_cardSelMax===1){
+          // 単数選択（従来通り）
+          var all=document.getElementsByClassName('csp-card');
+          for(var j=0;j<all.length;j++) all[j].classList.remove('selected');
+          el.classList.add('selected');
+          G_cardSelSelected=card; G_cardSelMulti=[card];
+        } else {
+          // 複数選択
+          var idx2=G_cardSelMulti.indexOf(card);
+          if(idx2>=0){
+            G_cardSelMulti.splice(idx2,1);
+            el.classList.remove('selected');
+          } else {
+            if(G_cardSelMulti.length>=G_cardSelMax) return; // 上限
+            G_cardSelMulti.push(card);
+            el.classList.add('selected');
+          }
+          G_cardSelSelected=G_cardSelMulti[0]||null;
+        }
+        updateConfirmBtn();
+      };
+      bindDoubleTap(el,function(e){e.stopPropagation();openCardModal(card);});
+    })(i, c, d);
+    container.appendChild(d);
+  });
+
+  if(opts.skipLabel){
+    var skip=document.createElement('div'); skip.className='csp-card skip-btn'; skip.textContent=opts.skipLabel;
+    skip.onclick=function(){
+      document.getElementById('card-sel-popup').className='';G_popupWaiting=false;
+      var cb=G_cardSelCallback; G_cardSelCallback=null; G_cardSelSelected=null; G_cardSelMulti=[];
+      cb(null); render(); updateBtns();
+    };
+    container.appendChild(skip);
+  }
+
+  document.getElementById('csp-confirm').disabled=true;
+  document.getElementById('csp-prev-name').textContent='カードを選んでください';
+  document.getElementById('csp-prev-eff').textContent='';
+  document.getElementById('csp-prev-img').innerHTML='<div class="no-img">🃏</div>';
+  document.getElementById('card-sel-popup').className='open';
+}
+
+function updateCspPreview(c){
+  var nameEl=document.getElementById('csp-prev-name');
+  var effEl=document.getElementById('csp-prev-eff');
+  var imgEl=document.getElementById('csp-prev-img');
+  nameEl.textContent=c.name+'　コスト'+c.cost+(c.pow>0?'　P:'+c.pow:'　呪文');
+  effEl.textContent=c.eff||'';
+  if(CARD_IMAGES[c.id]) imgEl.innerHTML='<img src="'+CARD_IMAGES[c.id]+'" alt="'+c.name+'">';
+  else imgEl.innerHTML='<div class="no-img">'+(c.icon||'🃏')+'</div>';
+}
+
+function confirmCardSel(){
+  var result=G_cardSelMax>1?G_cardSelMulti:G_cardSelSelected;
+  if(!result||(Array.isArray(result)&&result.length===0)) return;
+  document.getElementById('card-sel-popup').className='';
+  G_popupWaiting=false;
+  var cb=G_cardSelCallback;
+  G_cardSelCallback=null; G_cardSelSelected=null; G_cardSelMulti=[];
+  cb(result);
+  render(); updateBtns();
+}
+
+function cancelCardSel(){
+  document.getElementById('card-sel-popup').className = '';
+  G_popupWaiting=false;
+  if(G_cardSelCallback){
+    var cb = G_cardSelCallback;
+    G_cardSelCallback = null;
+    G_cardSelSelected = null;
+    cb(null);
+    render(); updateBtns();
+  }
+}
+
+/* ══ 効果選択ポップアップ ══
+   showPopup(title, desc, choices, callback)
+   choices: [{label, cls}]  cls: 'yes'|'no'|''
+   callback(index) で選択結果を受け取る
+*/
+var G_effPopupCallback=null;
+var G_effPopupSelected=null;
+
+function showPopup(title, desc, choices, callback){
+  G_popupWaiting=true;
+  G_effPopupCallback=callback;
+  G_effPopupSelected=null;
+  document.getElementById('eff-title').textContent=title;
+  document.getElementById('eff-desc').textContent=desc;
+  document.getElementById('eff-confirm').disabled=true;
+  var btns=document.getElementById('eff-btns');
+  btns.innerHTML='';
+  choices.forEach(function(ch,i){
+    var b=document.createElement('button');
+    b.className='eff-btn '+(ch.cls||'');
+    b.textContent=ch.label;
+    (function(idx){
+      b.onclick=function(){
+        // 選択状態を切り替え
+        var all=document.getElementsByClassName('eff-btn');
+        for(var j=0;j<all.length;j++) all[j].style.outline='';
+        b.style.outline='2px solid var(--gold)';
+        G_effPopupSelected=idx;
+        document.getElementById('eff-confirm').disabled=false;
+      };
+    })(i);
+    btns.appendChild(b);
+  });
+  document.getElementById('eff-popup').className='open';
+}
+
+function confirmEffPopup(){
+  if(G_effPopupSelected===null) return;
+  document.getElementById('eff-popup').className='';
+  G_popupWaiting=false;
+  var cb=G_effPopupCallback;
+  var sel=G_effPopupSelected;
+  G_effPopupCallback=null;
+  G_effPopupSelected=null;
+  cb(sel);
+  render(); updateBtns();
+}
+
+function doAttack(){
+  var c=null; for(var i=0;i<G.myBattle.length;i++) if(G.myBattle[i].uid===G.sel){c=G.myBattle[i];break;}
+  if(!c||c.tapped) return;
+
+  var hasAbyssbell=G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
+  var hasMachFighter=hasAbyssbell;
+
+  // 召喚酔いチェック
+  if(c.summoned){
+    if(!hasMachFighter){log('l','⚠️「'+c.name+'」は召喚酔いのため攻撃できません');return;}
+    if(G.oppBattle.length===0){log('l','⚠️ マッハファイターはクリーチャーがいない場合シールドへ攻撃できません');return;}
+  }
+
+  // 攻撃先の選択肢を構築
+  // タップしている相手クリーチャー（通常攻撃可能）
+  var tappedEnemies=G.oppBattle.filter(function(x){return x.tapped;});
+  // マッハファイター時はアンタップも対象
+  var attackableEnemies=hasMachFighter ? G.oppBattle : tappedEnemies;
+  // シールドへの攻撃：召喚酔いなしなら常に可（クリーチャーがいても可）
+  var canAttackShield = !c.summoned;
+  // マッハファイターは召喚酔いでもクリーチャーへのみ可（シールドは不可）
+
+  // ブレイク数を判定
+  var breakCount=1;
+  if(c.eff&&c.eff.indexOf('T・ブレイカー')!==-1) breakCount=3;
+  else if(c.eff&&c.eff.indexOf('W・ブレイカー')!==-1) breakCount=2;
+
+  // 攻撃先選択ポップアップを構築
+  var opts=[];
+  for(var i=0;i<attackableEnemies.length;i++){
+    var e=attackableEnemies[i];
+    opts.push({label:'⚔️ '+e.name+'（P:'+e.pow+'）'+(e.tapped?' [タップ]':''),cls:'',uid:e.uid,type:'creature'});
+  }
+  if(canAttackShield){
+    var intactShields=[];
+    for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) intactShields.push(i);
+    if(intactShields.length>0){
+      if(breakCount===1 || intactShields.length===1){
+        // シングルブレイカーまたはシールドが1枚：そのままopts追加
+        for(var i=0;i<intactShields.length;i++){
+          opts.push({label:'🛡 シールド '+(intactShields[i]+1)+'枚目を割る',cls:'',shieldIdx:intactShields[i],type:'shield',breakCount:1});
+        }
+      } else {
+        // W/Tブレイカー：シールド複数選択
+        opts.push({label:'🛡 シールドへ攻撃（'+Math.min(breakCount,intactShields.length)+'枚選択）',cls:'yes',type:'shield_multi',breakCount:Math.min(breakCount,intactShields.length),intactShields:intactShields});
+      }
+    } else {
+      opts.push({label:'💥 ダイレクトアタック！',cls:'yes',type:'direct'});
+    }
+  }
+
+  if(opts.length===1){
+    execAttack(c,opts[0]);
+  } else if(opts.length===0){
+    log('l','⚠️ 攻撃できる対象がありません');
+  } else {
+    showPopup(
+      '「'+c.name+'」の攻撃先を選ぶ'+(breakCount>1?' （'+['','','W','T'][breakCount]+'・ブレイカー）':''),
+      '',
+      opts,
+      function(idx){ execAttack(c,opts[idx]); }
+    );
+  }
+}
+
+function execAttack(c,target){
+  c.tapped=true;
+  if(target.type==='creature'){
+    var t=null; for(var i=0;i<G.oppBattle.length;i++) if(G.oppBattle[i].uid===target.uid){t=G.oppBattle[i];break;}
+    if(!t){G.sel=null;render();updateBtns();return;}
+    log('a','⚔️「'+c.name+'」('+c.pow+') → 「'+t.name+'」('+t.pow+')');
+    battle(c,t,true);
+    // シビルカウント3
+    if(c.id==='maardan'){
+      var darkCount=G.myBattle.filter(function(x){return x.civ==='d';}).length;
+      if(darkCount>=3&&G.oppGrave.length>0){
+        var gOpts=G.oppGrave.map(function(x){return{label:x.name+'（コスト'+x.cost+'）',cls:''};});
+        gOpts.push({label:'✋ 使わない',cls:'no'});
+        showPopup('シビルカウント3！','自分の闇が'+darkCount+'体！相手墓地のカードの出た時能力を使う。',gOpts,function(sidx){
+          if(sidx===gOpts.length-1){log('w','🌑 シビルカウント：使わない');return;}
+          var gc=G.oppGrave[sidx];
+          log('w','🌑 シビルカウント：「'+gc.name+'」の能力発動！');
+          mySummonEff(gc);
+          G.oppGrave=G.oppGrave.filter(function(x){return x.uid!==gc.uid;});
+          G.oppDeck.unshift(gc);
+          log('w','🌑「'+gc.name+'」を相手山札の下へ');
+        });
+      }
+    }
+  } else if(target.type==='shield'){
+    breakOneShield(target.shieldIdx);
+    var rem=0; for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) rem++;
+    if(rem===0) log('a','🔥 全シールド破壊！次でダイレクト！');
+  } else if(target.type==='shield_multi'){
+    // W/Tブレイカー：複数シールドを選択させる
+    showShieldSelectPopup(target.intactShields, target.breakCount);
+  } else if(target.type==='direct'){
+    log('a','🎉 ダイレクトアタック！'); fxFloat('ダイレクト！','#ff8844');
+    endGame(true,c.name+'のダイレクトアタックで勝利！');
+  }
+  G.sel=null; render(); updateBtns();
+}
+function breakOneShield(idx){
+  var sh=G.oppShields[idx];
+  if(!sh||!sh.intact) return;
+  G.oppShields[idx].intact=false;
+  var rem=0; for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) rem++;
+  G.oppHand.push({id:sh.card.id,name:sh.card.name,cost:sh.card.cost,pow:sh.card.pow,type:sh.card.type,civ:sh.card.civ,icon:sh.card.icon,eff:sh.card.eff,uid:nuid(),twin:sh.card.twin||false,spellName:sh.card.spellName||'',spellCost:sh.card.spellCost||0,spellEff:sh.card.spellEff||''});
+  log('a','💥 シールド'+(idx+1)+'をブレイク「'+sh.card.name+'」（相手残'+rem+'）');
+  shakeShield('osh',idx); fxFloat('ブレイク！','#ff8844');
+  // S・トリガー / G・ストライク / S・バック
+  if(sh.card.eff&&sh.card.eff.indexOf('S・トリガー')!==-1){log('w','🛡 S・トリガー「'+sh.card.name+'」発動！');spellEff(sh.card,true);}
+  if(sh.card.eff&&sh.card.eff.indexOf('G・ストライク')!==-1&&G.oppBattle.length>0){
+    var gsOpts=G.oppBattle.map(function(x){return{label:x.name+'（P:'+x.pow+'）',cls:''};});
+    gsOpts.push({label:'✋ G・ストライクを使わない',cls:'no'});
+    showPopup('G・ストライク！','「'+sh.card.name+'」\n相手クリーチャーを1体選ぶ。\nこのターン攻撃不可にする。',gsOpts,function(gi){
+      if(gi===gsOpts.length-1){log('w','🛡 G・ストライク：使わない');return;}
+      G.oppBattle[gi].tapped=true;
+      log('w','🛡 G・ストライク：「'+G.oppBattle[gi].name+'」このターン攻撃不可！');
+    });
+  }
+}
+
+/* W/Tブレイカー用：シールドを複数選択するポップアップ */
+function showShieldSelectPopup(intactIdxs, needed){
+  var selected=[];
+  // eff-popupを流用してカスタムUIを表示
+  document.getElementById('eff-title').textContent='シールドを'+needed+'枚選んで割る';
+  document.getElementById('eff-desc').textContent='クリックして選択（'+needed+'枚）→ 決定';
+  var btns=document.getElementById('eff-btns');
+  btns.innerHTML='';
+  // シールドボタン群
+  var shWrap=document.createElement('div');
+  shWrap.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px;';
+  intactIdxs.forEach(function(idx){
+    var b=document.createElement('button');
+    b.className='eff-btn';
+    b.style.cssText='width:64px;height:88px;padding:0;overflow:hidden;border-radius:6px;position:relative;';
+    if(CARD_IMAGES['cardback']){
+      b.innerHTML='<img src="'+CARD_IMAGES['cardback']+'" style="width:100%;height:100%;object-fit:cover;"><div style="position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:.5rem;color:#fff;background:rgba(0,0,0,.5);">No.'+(idx+1)+'</div>';
+    } else {
+      b.textContent='🛡 '+(idx+1);
+    }
+    (function(i){
+      b.onclick=function(){
+        var pos=selected.indexOf(i);
+        if(pos>=0){
+          selected.splice(pos,1);
+          b.style.boxShadow='';
+          b.style.transform='';
+          b.style.borderColor='';
+        } else if(selected.length<needed){
+          selected.push(i);
+          b.style.boxShadow='0 0 12px rgba(255,204,0,.8)';
+          b.style.transform='translateY(-6px) scale(1.08)';
+          b.style.borderColor='var(--gold)';
+        }
+        confirmBtn.disabled=(selected.length!==needed);
+      };
+    })(idx);
+    shWrap.appendChild(b);
+  });
+  btns.appendChild(shWrap);
+  // 決定ボタン
+  var confirmBtn=document.createElement('button');
+  confirmBtn.className='eff-btn yes';
+  confirmBtn.textContent='✅ 決定（'+needed+'枚ブレイク）';
+  confirmBtn.disabled=true;
+  confirmBtn.onclick=function(){
+    document.getElementById('eff-popup').className='';
+    selected.forEach(function(idx){ breakOneShield(idx); });
+    var rem=0; for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) rem++;
+    if(rem===0) log('a','🔥 全シールド破壊！次でダイレクト！');
+    render(); updateBtns();
+  };
+  btns.appendChild(confirmBtn);
+  document.getElementById('eff-popup').className='open';
+}
+
+function battle(atk,def,isMe){
+  // スレイヤー判定：スレイヤー持ちは勝敗に関わらず相手を破壊
+  var atkSlayer = (atk.eff && atk.eff.indexOf('スレイヤー')!==-1);
+  var defSlayer = (def.eff && def.eff.indexOf('スレイヤー')!==-1);
+
+  if(atk.pow>def.pow){
+    if(isMe){G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==def.uid;});G.oppGrave.push(def);log('w','✅「'+def.name+'」撃破！');fxFloat('勝利！','#ffcc00');
+      if(defSlayer){G.myBattle=G.myBattle.filter(function(x){return x.uid!==atk.uid;});G.grave.push(atk);log('l','💀 スレイヤー：「'+atk.name+'」も破壊された');}
+    }
+    else{G.myBattle=G.myBattle.filter(function(x){return x.uid!==def.uid;});G.grave.push(def);log('l','💀「'+def.name+'」破壊された');
+      if(defSlayer){G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==atk.uid;});G.oppGrave.push(atk);log('w','⚡ スレイヤー：「'+atk.name+'」も破壊');}
+    }
+  } else if(atk.pow===def.pow){
+    if(isMe){G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==def.uid;});G.myBattle=G.myBattle.filter(function(x){return x.uid!==atk.uid;});G.oppGrave.push(def);G.grave.push(atk);}
+    else{G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==atk.uid;});G.myBattle=G.myBattle.filter(function(x){return x.uid!==def.uid;});G.oppGrave.push(atk);G.grave.push(def);}
+    log('s','⚡ 相打ち！'); fxFloat('相打ち','#ffaa44');
+  } else {
+    if(isMe){
+      G.myBattle=G.myBattle.filter(function(x){return x.uid!==atk.uid;});G.grave.push(atk);log('l','💀「'+atk.name+'」が破壊された！');fxFloat('敗北','#ff4422');
+      if(atkSlayer){G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==def.uid;});G.oppGrave.push(def);log('w','⚡ スレイヤー：「'+def.name+'」も道連れ！');}
+    }
+    else{G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==atk.uid;});G.oppGrave.push(atk);G.myBattle=G.myBattle.filter(function(x){return x.uid!==def.uid;});G.grave.push(def);
+      if(atkSlayer){log('l','💀 スレイヤー：「'+atk.name+'」は道連れで破壊');}
+    }
+  }
+}
+
+/* ══ レンダリング ══ */
+function render(){
+  renderSh('msh',G.myShields); renderSh('osh',G.oppShields);
+  var msc=0; for(var i=0;i<G.myShields.length;i++) if(G.myShields[i].intact) msc++;
+  var osc=0; for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) osc++;
+  document.getElementById('msc').textContent=msc;
+  document.getElementById('osc').textContent=osc;
+  // 相手手札：枚数のみ更新
+  var ohcnt=document.getElementById('ohcnt'); if(ohcnt) ohcnt.textContent=G.oppHand.length;
+  renderBZ('mbz',G.myBattle,true); renderBZ('obz',G.oppBattle,false);
+  renderMana(); renderHand();
+  var _dcnt=document.getElementById('dcnt');if(_dcnt)_dcnt.textContent=G.myDeck.length;
+  document.getElementById('gcnt').textContent=G.grave.length;
+  var _odcnt=document.getElementById('odcnt');if(_odcnt)_odcnt.textContent=G.oppDeck.length;
+  var ogcnt=document.getElementById('ogcnt'); if(ogcnt) ogcnt.textContent=G.oppGrave?G.oppGrave.length:0;
+  // 相手マナ描画
+  renderOppMana();
+  var omnalbl=document.getElementById('omnalbl');
+  if(omnalbl) omnalbl.textContent='相手マナ '+G.oppMana.length;
+  var omcnt2=document.getElementById('omcnt'); if(omcnt2) omcnt2.textContent=G.oppMana.length||0;
+  var mmcnt=document.getElementById('mmcnt'); if(mmcnt) mmcnt.textContent=G.myMana.length;
+}
+function renderOppMana(){
+  var el=document.getElementById('omna'); if(!el) return;
+  el.innerHTML='';
+  var bg={n:'linear-gradient(160deg,#0d2210,#193219)',d:'linear-gradient(160deg,#10071e,#1e0e34)',m:'linear-gradient(to bottom,#0d2210 50%,#10071e 50%)',nd:'linear-gradient(to bottom,#0d2210 50%,#10071e 50%)'};
+  var bc={n:'#2a7a2a',d:'#6622aa',m:'#446644',nd:'#557766'};
+  var ic={n:'🌿',d:'🌑',m:'💠',nd:'⬡'};
+  for(var i=0;i<G.oppMana.length;i++){
+    var m=G.oppMana[i];
+    var ck=m.civ==='n'?'n':m.civ==='d'?'d':m.civ==='m'?'m':'nd';
+    var d=document.createElement('div');
+    d.className='mc '+(ck==='n'?'mn':ck==='d'?'md':ck==='m'?'mm':'mnd')+(m.tapped?' mt':'');
+    d.title=(m.name||m.civ)+(m.tapped?' [タップ]':' [アンタップ]');
+    d.style.background=bg[ck]; d.style.borderColor=bc[ck];
+    var def=null; for(var j=0;j<DECK.length;j++){if(DECK[j].name===m.name){def=DECK[j];break;}}
+    if(def&&CARD_IMAGES[def.id]){
+      var img=document.createElement('img');
+      img.src=CARD_IMAGES[def.id]; img.alt=m.name;
+      img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:2px;display:block;transform:rotate(180deg);';
+      d.appendChild(img);
+    } else {
+      d.style.display='flex'; d.style.alignItems='center'; d.style.justifyContent='center'; d.style.fontSize='.5rem';
+      d.textContent=ic[ck]||'●';
+    }
+    if(m.tapped){var ov=document.createElement('div');ov.className='mc-tap-overlay';d.appendChild(ov);}
+    if(def)(function(c){bindDoubleTap(d,function(){openCardModal(c);});})(def);
+    el.appendChild(d);
+  }
+}
+function renderSh(id,arr){
+  var el=document.getElementById(id); el.innerHTML='';
+  for(var i=0;i<arr.length;i++){
+    var d=document.createElement('div');
+    d.className='sh '+(arr[i].intact?'sh-i':'sh-b');
+    if(arr[i].intact && CARD_IMAGES['cardback']){
+      var img=document.createElement('img');
+      img.src=CARD_IMAGES['cardback'];
+      img.alt='シールド';
+      d.appendChild(img);
+    } else if(!arr[i].intact){
+      d.textContent='💥';
+    }
+    el.appendChild(d);
+  }
+}
+function shakeShield(id,idx){
+  var z=document.getElementById(id);
+  var shs=z.getElementsByClassName('sh');
+  if(shs[idx]){shs[idx].className+=' sh-p';var s=shs[idx];setTimeout(function(){s.className=s.className.replace(' sh-p','');},500);}
+}
+function renderBZ(id,cards,mine){
+  var el=document.getElementById(id); el.innerHTML='';
+  for(var i=0;i<cards.length;i++){
+    var d=mkCard(cards[i],mine);
+    // 自分バトルゾーン・攻撃フェーズのみアタックボタンを表示
+    if(mine && G.phase===4){
+      var c=cards[i];
+      var canAtk=canCardAttack(c);
+      if(canAtk){
+        (function(card,cardEl){
+          cardEl.onmouseenter=function(){showBZActionPopup(card,cardEl);};
+          cardEl.onmouseleave=function(e){
+            var pop=document.getElementById('card-action-popup');
+            if(pop&&pop.contains(e.relatedTarget)) return;
+            hideCardActionPopup();
+          };
+        })(c,d);
+      }
+    }
+    el.appendChild(d);
+  }
+}
+
+function canCardAttack(c){
+  if(c.tapped||c.sealed) return false;
+  var hasAbyssbell=G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
+  var isMach=hasAbyssbell;
+  if(c.summoned&&!isMach) return false;
+  if(c.summoned&&isMach&&G.oppBattle.length===0) return false;
+  // タップ相手 or シールド or ダイレクト があれば攻撃可
+  var tappedEnemies=G.oppBattle.filter(function(x){return x.tapped;});
+  var attackableEnemies=isMach?G.oppBattle:tappedEnemies;
+  return attackableEnemies.length>0||!c.summoned;
+}
+
+function showBZActionPopup(c, cardEl){
+  var pop=document.getElementById('card-action-popup');
+  if(!pop) return;
+  pop.innerHTML='';
+  G_popupOnClose=null;
+
+  function makeBtn(text,cls,fn){
+    var b=document.createElement('button');
+    b.className='cact-btn '+cls;
+    b.textContent=text;
+    b.onmouseenter=function(){};
+    b.onclick=function(e){e.stopPropagation();hideCardActionPopup();fn();};
+    return b;
+  }
+
+  pop.appendChild(makeBtn('⚔️ アタック','cact-sum',function(){
+    G.sel=c.uid; doAttack();
+  }));
+
+  var rect=cardEl.getBoundingClientRect();
+  var pw=90;
+  var left=rect.left+rect.width/2-pw/2;
+  if(left<4) left=4;
+  if(left+pw>window.innerWidth-4) left=window.innerWidth-pw-4;
+  pop.style.left=left+'px';
+  pop.style.bottom=(window.innerHeight-rect.top+8)+'px';
+  pop.style.width=pw+'px';
+  pop.className='open';
+  pop.onmouseleave=function(e){
+    if(cardEl.contains(e.relatedTarget)) return;
+    hideCardActionPopup();
+  };
+}
+function mkCard(c,clickable){
+  var cm={'n':'cn','d':'cd','m':'cm','l':'cl'};
+  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(c.summoned?' sick':'')+(c.sealed?' sealed':'')+(G.sel===c.uid?' sel':'');
+  var d=document.createElement('div');
+  d.className=cls;
+
+  // カード画像がある場合は画像表示、なければテキスト表示
+  if(CARD_IMAGES[c.id]){
+    d.style.padding='0';
+    d.style.overflow='hidden';
+    d.innerHTML=
+      '<span class="ccost">'+c.cost+'</span>'+
+      '<img src="'+CARD_IMAGES[c.id]+'" style="width:100%;height:100%;object-fit:cover;border-radius:4px;display:block;">'+
+      '<div class="cpow" style="position:absolute;bottom:2px;right:2px;">'+(c.pow>0?c.pow:'呪文')+'</div>';
+    if(c.summoned) d.innerHTML+='<div style="position:absolute;bottom:2px;left:2px;font-size:.42rem;color:#ff8888;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px;line-height:1.4;">酔</div>';
+  } else {
+    // 多色カードのアイコンは緑と黒を縦並びで表示
+    var icoHtml;
+    if(c.civ==='m'){
+      icoHtml='<span class="cico" style="line-height:1;font-size:.48rem;display:flex;flex-direction:column;gap:0;top:1px;right:1px;">🌿<span style="color:#aa44ff;font-size:.48rem;">🌑</span></span>';
+    } else {
+      icoHtml='<span class="cico">'+c.icon+'</span>';
+    }
+    d.innerHTML='<span class="ccost">'+c.cost+'</span>'+icoHtml+'<div class="cname">'+c.name+'</div><div class="cpow">'+(c.pow>0?(c.pow>=10000?Math.round(c.pow/1000)+'k':c.pow):'呪文')+'</div>';
+  }
+  if(clickable){
+    (function(uid,card){
+      d.onclick=function(e){
+        hideCardActionPopup();
+        selCard(uid); updateBtns();
+      };
+      // ダブルクリックでプレビュー
+      bindDoubleTap(d, function(e){e.stopPropagation();openCardModal(card);});
+    })(c.uid,c);
+  } else {
+    // クリック不可カード（相手のカード等）もダブルクリックでプレビュー可
+    (function(card){bindDoubleTap(d, function(e){e.stopPropagation();openCardModal(card);});})(c);
+  }
+  // 長押しでプレビュー（モバイル対応）
+  (function(card){
+    var pressTimer;
+    d.addEventListener('touchstart',function(){pressTimer=setTimeout(function(){openCardModal(card);},200);},{passive:true});
+    d.addEventListener('touchend',function(){clearTimeout(pressTimer);},{passive:true});
+    d.addEventListener('touchmove',function(){clearTimeout(pressTimer);},{passive:true});
+  })(c);
+  d.title=c.name+'\nコスト:'+c.cost+(c.pow>0?'\nP:'+c.pow:'')+'\n'+c.eff;
+  return d;
+}
+function showGraveModal(who){
+  var cards = (who==='my') ? G.grave : (G.oppGrave||[]);
+  var title = (who==='my') ? '自分の墓地（'+cards.length+'枚）' : '相手の墓地（'+cards.length+'枚）';
+  openZoneModal(title, cards, false);
+  document.getElementById('zm-actions').innerHTML='';
+}
+function showManaModal(who){
+  if(who==='my'){
+    // 自分マナは詳細オブジェクト
+    var items = G.myMana.map(function(m){ return {name:m.name, civ:m.civ, tapped:m.tapped}; });
+    var title = '自分のマナゾーン（'+items.length+'枚）';
+    openZoneModal(title, items, true);
+  } else {
+    // 相手マナは枚数のみ（オブジェクトでない）
+    var title = '相手のマナゾーン（'+G.oppMana.length+'枚）';
+    var modal = document.getElementById('zone-modal');
+    var zm = document.getElementById('zm-title');
+    var zl = document.getElementById('zm-list');
+    zm.textContent = title;
+    zl.innerHTML = '<div style="color:var(--muted);font-size:.65rem;padding:8px;">相手マナ（'+G.oppMana.length+'マナ）</div>';
+    modal.className = 'open';
+  }
+}
+function openZoneModal(title, cards, isMana){
+  // 場を見る中なら戻るボタンを一時的に隠す
+  var fvBtn=document.getElementById('field-view-btn');
+  if(fvBtn&&fvBtn.className==='open'){fvBtn.dataset.hidden='1';fvBtn.style.visibility='hidden';}
+  var zm=document.getElementById('zm-title');
+  var zl=document.getElementById('zm-list');
+  zm.textContent=title;
+  zl.innerHTML='';
+  if(cards.length===0){
+    zl.innerHTML='<div style="color:var(--muted);font-size:.65rem;padding:8px;">カードなし</div>';
+  } else {
+    var civCol={'n':'#44aa44','d':'#8844cc','m':'linear-gradient(135deg,#44aa44,#8844cc)'};
+    for(var i=cards.length-1;i>=0;i--){
+      var c=cards[i];
+      var row=document.createElement('div');
+      row.className='zm-row';
+      var imgHtml='';
+      if(c.id&&CARD_IMAGES[c.id]){
+        imgHtml='<img src="'+CARD_IMAGES[c.id]+'" alt="'+c.name+'">';
+      } else {
+        var bg=civCol[c.civ]||'#333';
+        imgHtml='<div class="zm-row-icon" style="background:'+bg+';">'+( c.icon||'🃏')+'</div>';
+      }
+      var sub='コスト'+(c.cost||'-');
+      if(c.pow>0) sub+=' P:'+c.pow;
+      if(isMana) sub+=c.tapped?' ［タップ済］':' ［アンタップ］';
+      row.innerHTML=imgHtml+'<div class="zm-info"><div class="zm-name">'+(c.name||'不明')+'</div><div class="zm-sub">'+sub+'</div></div>';
+
+      // 墓地カードへのアクションボタン（メインフェイズ中のみ）
+      if(!isMana && G.phase===3){
+        var btnWrap=document.createElement('div');
+        btnWrap.className='zm-btns';
+        // アビスラッシュ
+        if(c.type==='creature'&&c.eff&&c.eff.indexOf('アビスラッシュ')!==-1){
+          var rb=document.createElement('button');
+          rb.className='zm-btn zm-btn-rush';
+          rb.textContent='ラッシュ';
+          (function(card){rb.onclick=function(e){e.stopPropagation();closeZoneModal();doAbyssRushCard(card);};})(c);
+          btnWrap.appendChild(rb);
+        }
+        // 墓地から呪文を唱える
+        if(c.type==='spell'&&c.eff&&c.eff.indexOf('墓地から唱えてもよい')!==-1){
+          var sb=document.createElement('button');
+          sb.className='zm-btn zm-btn-spell';
+          sb.textContent='詠唱';
+          (function(card){sb.onclick=function(e){e.stopPropagation();closeZoneModal();doGraveSpellCard(card);};})(c);
+          btnWrap.appendChild(sb);
+        }
+        if(btnWrap.children.length>0) row.appendChild(btnWrap);
+      }
+
+      // 行クリックでカードプレビュー
+      if(c.id){(function(card){row.onclick=function(){openCardModal(card);};})(c);}
+      zl.appendChild(row);
+    }
+  }
+  document.getElementById('zone-modal').className='open';
+}
+function closeZoneModal(){
+  document.getElementById('zone-modal').className='';
+  // 場を見る中なら戻るボタンを再表示
+  var fvBtn=document.getElementById('field-view-btn');
+  if(fvBtn&&fvBtn.className==='open'){fvBtn.dataset.hidden='';fvBtn.style.visibility='visible';}
+}
+function openCardModal(c){
+  var fvBtn=document.getElementById('field-view-btn');
+  if(fvBtn&&fvBtn.className==='open'){fvBtn.dataset.hidden='1';fvBtn.style.visibility='hidden';}
+  var wrap=document.getElementById('cm-img-wrap');
+  var nameEl=document.getElementById('cm-name');
+  var costEl=document.getElementById('cm-cost');
+  var effEl=document.getElementById('cm-eff');
+  wrap.innerHTML='';
+  if(CARD_IMAGES[c.id]){
+    wrap.className='';
+    var img=document.createElement('img');
+    img.src=CARD_IMAGES[c.id]; img.alt=c.name;
+    img.style.cssText='width:280px;border-radius:10px;box-shadow:0 4px 18px rgba(0,0,0,.6);display:block;';
+    wrap.appendChild(img);
+    nameEl.textContent=''; costEl.textContent=''; effEl.textContent='';
+  } else {
+    // 画像なし：カードレイアウト風テキスト
+    var civBg={n:'linear-gradient(160deg,#0d2210,#193219)',d:'linear-gradient(160deg,#10071e,#1e0e34)',m:'linear-gradient(to bottom,#0d2210 50%,#10071e 50%)',l:'linear-gradient(160deg,#1e1e0e,#2a2a16)'};
+    var civColor={n:'#44cc66',d:'#aa44ff',m:'#66cc88',l:'#ccaa22'};
+    var civName={n:'自然文明',d:'闇文明',m:'自然/闇文明',l:'光文明'};
+    var civ=c.civ||'d';
+    wrap.className='';
+    wrap.style.cssText='width:260px;border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:8px;background:'+civBg[civ]+';border:2px solid '+(civColor[civ]||'#444')+';box-shadow:0 4px 18px rgba(0,0,0,.6);';
+    // ヘッダー（コスト＋名前）
+    var hdr=document.createElement('div'); hdr.style.cssText='display:flex;align-items:flex-start;gap:8px;';
+    var cb=document.createElement('div'); cb.style.cssText='min-width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,.15);border:2px solid '+(civColor[civ]||'#fff')+';display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:900;color:#fff;flex-shrink:0;'; cb.textContent=c.cost;
+    var tb=document.createElement('div');
+    var cn=document.createElement('div'); cn.style.cssText='font-size:.78rem;font-weight:900;color:#fff;line-height:1.3;'; cn.textContent=c.name;
+    var cc=document.createElement('div'); cc.style.cssText='font-size:.52rem;color:'+(civColor[civ]||'#aaa')+';margin-top:2px;'; cc.textContent=civName[civ]||'';
+    tb.appendChild(cn); tb.appendChild(cc); hdr.appendChild(cb); hdr.appendChild(tb); wrap.appendChild(hdr);
+    // タイプ行
+    var tp=document.createElement('div'); tp.style.cssText='font-size:.52rem;color:rgba(255,255,255,.5);border-bottom:1px solid rgba(255,255,255,.12);padding-bottom:6px;';
+    var tl=c.type==='creature'?'クリーチャー　P:'+c.pow:'呪文';
+    if(c.twin) tl+='　/　'+c.spellName+'（コスト'+c.spellCost+'）';
+    tp.textContent=tl; wrap.appendChild(tp);
+    // 効果
+    var ef=document.createElement('div'); ef.style.cssText='font-size:.62rem;color:rgba(255,255,255,.88);line-height:1.7;white-space:pre-wrap;'; ef.textContent=c.eff||''; wrap.appendChild(ef);
+    // ツインパクト呪文面
+    if(c.twin&&c.spellEff){
+      var sp=document.createElement('div'); sp.style.cssText='border-top:1px solid rgba(255,255,255,.15);padding-top:6px;margin-top:4px;';
+      var sl=document.createElement('div'); sl.style.cssText='font-size:.52rem;color:rgba(255,255,255,.35);margin-bottom:4px;'; sl.textContent='── 呪文面 ──';
+      var se=document.createElement('div'); se.style.cssText='font-size:.62rem;color:rgba(255,255,255,.85);line-height:1.7;white-space:pre-wrap;'; se.textContent=c.spellEff;
+      sp.appendChild(sl); sp.appendChild(se); wrap.appendChild(sp);
+    }
+    nameEl.textContent=''; costEl.textContent=''; effEl.textContent='';
+  }
+  document.getElementById('card-modal').className='open';
+}
+function closeCardModal(){
+  document.getElementById('card-modal').className='';
+  var fvBtn=document.getElementById('field-view-btn');
+  // 墓地/マナモーダルが開いていれば戻るボタンは隠したまま
+  var zoneModal=document.getElementById('zone-modal');
+  if(zoneModal&&zoneModal.className==='open') return;
+  if(fvBtn&&fvBtn.className==='open'){fvBtn.dataset.hidden='';fvBtn.style.visibility='visible';}
+}
+function renderMana(){
+  var el=document.getElementById('mna'); if(!el) return;
+  el.innerHTML='';
+  var av=0;
+  var civBg={n:'linear-gradient(160deg,#0d2210,#193219)',d:'linear-gradient(160deg,#10071e,#1e0e34)',m:'linear-gradient(to bottom,#0d2210 50%,#10071e 50%)',nd:'linear-gradient(to bottom,#0d2210 50%,#10071e 50%)'};
+  var civBorder={n:'#2a7a2a',d:'#6622aa',m:'#446644',nd:'#557766'};
+  var civIcon={n:'🌿',d:'🌑',m:'💠',nd:'⬡'};
+  for(var i=0;i<G.myMana.length;i++){
+    var m=G.myMana[i];
+    if(!m.tapped) av++;
+    var d=document.createElement('div');
+    var civKey=m.civ==='n'?'n':m.civ==='d'?'d':m.civ==='m'?'m':'nd';
+    d.className='mc '+(civKey==='n'?'mn':civKey==='d'?'md':civKey==='m'?'mm':'mnd')+(m.tapped?' mt':'');
+    d.title=(m.name||m.civ)+(m.tapped?' [タップ]':' [アンタップ]');
+    d.style.background=civBg[civKey]||civBg.nd;
+    d.style.borderColor=civBorder[civKey]||civBorder.nd;
+    // カード画像があれば表示
+    var cardDef=null;
+    for(var j=0;j<DECK.length;j++){if(DECK[j].name===m.name){cardDef=DECK[j];break;}}
+    if(cardDef&&CARD_IMAGES[cardDef.id]){
+      var img=document.createElement('img');
+      img.src=CARD_IMAGES[cardDef.id]; img.alt=m.name;
+      img.style.cssText='width:100%;height:100%;object-fit:cover;border-radius:2px;display:block;transform:rotate(180deg);';
+      d.appendChild(img);
+    } else {
+      d.style.cssText+='display:flex;align-items:center;justify-content:center;font-size:.5rem;';
+      d.textContent=civIcon[civKey]||'●';
+    }
+    if(m.tapped){var ov=document.createElement('div');ov.className='mc-tap-overlay';d.appendChild(ov);}
+    // ダブルタップで詳細
+    if(cardDef)(function(def){bindDoubleTap(d,function(){openCardModal(def);});})(cardDef);
+    el.appendChild(d);
+  }
+  var _mnalbl=document.getElementById('mnalbl'); if(_mnalbl) _mnalbl.textContent='マナ（'+av+'/'+G.myMana.length+'）';
+}
+
+function renderHand(){
+  var el=document.getElementById('g-hcards');
+  el.innerHTML='';
+  document.getElementById('g-hlbl').textContent='手札（'+G.myHand.length+'枚）';
+  // レンダリング直後の誤ホバー発火防止
+  el.style.pointerEvents='none';
+  setTimeout(function(){ el.style.pointerEvents=''; }, 300);
+  for(var i=0;i<G.myHand.length;i++){
+    var c=G.myHand[i];
+    var d=mkCard(c,false);
+    d.style.cursor='pointer';
+    (function(card,cardEl){
+      cardEl.onmouseenter=function(){
+        showCardActionPopup(card,cardEl);
+      };
+      cardEl.onmouseleave=function(e){
+        var pop=document.getElementById('card-action-popup');
+        if(pop && pop.contains(e.relatedTarget)) return;
+        hideCardActionPopup();
+      };
+      // ダブルタップ/ダブルクリックで詳細
+      bindDoubleTap(cardEl, function(e){ e.stopPropagation(); hideCardActionPopup(); openCardModal(card); });
+    })(c,d);
+    el.appendChild(d);
+  }
+}
+
+function showCardActionPopup(c, cardEl, onClose){
+  var pop=document.getElementById('card-action-popup');
+  if(!pop) return;
+  pop.innerHTML='';
+  G_popupOnClose=onClose||null;
+
+  var avNow=G_testMode?999:0;
+  if(!G_testMode) for(var k=0;k<G.myMana.length;k++) if(!G.myMana[k].tapped) avNow++;
+  var ecC=G_testMode?0:Math.max(G.costBonus>0?1:0,c.cost-G.costBonus);
+  var ecS=G_testMode?0:Math.max(0,(c.spellCost||0)-G.costBonus);
+  var canC=G_testMode||(avNow>=ecC);
+  var canS=c.twin&&(G_testMode||(avNow>=ecS));
+
+  function makeBtn(text,cls,fn){
+    var b=document.createElement('button');
+    b.className='cact-btn '+cls;
+    b.textContent=text;
+    b.onmouseenter=function(){clearTimeout(pop._closeTimer);};
+    b.onclick=function(e){e.stopPropagation();hideCardActionPopup();fn();};
+    return b;
+  }
+
+  if(G.phase===2&&!G.charged){
+    pop.appendChild(makeBtn('🌿 チャージ','cact-mna',function(){
+      chargeCardDirect(c);
+    }));
+  } else if(G.phase===3){
+    if(c.twin&&canC){
+      pop.appendChild(makeBtn('▶ プレイ（'+ecC+'）','cact-sum',function(){
+        playCardDirect(c,false,ecC);
+      }));
+    }
+    if(c.twin&&canS){
+      pop.appendChild(makeBtn('💫 呪文（'+ecS+'）','cact-spell',function(){
+        playCardDirect(c,true,ecS);
+      }));
+    }
+    if(!c.twin&&c.type==='creature'&&canC){
+      pop.appendChild(makeBtn('▶ プレイ（'+ecC+'）','cact-sum',function(){
+        playCardDirect(c,false,ecC);
+      }));
+    }
+    if(!c.twin&&c.type==='spell'&&canC){
+      pop.appendChild(makeBtn('▶ プレイ（'+ecC+'）','cact-spell',function(){
+        playCardDirect(c,false,ecC);
+      }));
+    }
+  }
+
+  if(pop.children.length===0) return;
+
+  var rect=cardEl.getBoundingClientRect();
+  var pw=96;
+  var left=rect.left+rect.width/2-pw/2;
+  if(left<4) left=4;
+  if(left+pw>window.innerWidth-4) left=window.innerWidth-pw-4;
+  pop.style.left=left+'px';
+  pop.style.bottom=(window.innerHeight-rect.top+8)+'px';
+  pop.style.width=pw+'px';
+  pop.className='open';
+
+  pop.onmouseleave=function(e){
+    if(cardEl.contains(e.relatedTarget)) return;
+    hideCardActionPopup();
+  };
+}
+
+function hideCardActionPopup(){
+  var pop=document.getElementById('card-action-popup');
+  if(pop) pop.className='';
+  if(G_popupOnClose){G_popupOnClose();G_popupOnClose=null;}
+}
+// ダブルタップ/ダブルクリック対応
+function bindDoubleTap(el, fn){
+  // PCはダブルクリック、モバイルはシングルタップで詳細表示
+  var lastTap=0;
+  el.addEventListener('touchend',function(e){
+    var now=Date.now();
+    var dt=now-lastTap;
+    lastTap=now;
+    if(dt<350 && dt>30){
+      e.preventDefault();
+      fn(e);
+    }
+  },{passive:false});
+  el.ondblclick=fn;
+}
+
+var G_popupOnClose=null;
+var G_popupWaiting=false; // ポップアップ表示中はtrue、ゲーム進行をブロック
+
+// ポップアップ待機中はタイマーをポーリングして待つ
+function safeTimeout(fn, delay){
+  setTimeout(function(){
+    if(G_popupWaiting){
+      // ポップアップが閉じるまでポーリング
+      var interval=setInterval(function(){
+        if(!G_popupWaiting){
+          clearInterval(interval);
+          fn();
+        }
+      },100);
+    } else {
+      fn();
+    }
+  }, delay);
+}
+
+// 外側クリックでカードアクションポップアップを閉じる
+document.addEventListener('click',function(e){
+  var pop=document.getElementById('card-action-popup');
+  if(pop&&pop.className==='open'&&!pop.contains(e.target)){
+    hideCardActionPopup();
+  }
+});
+
+/* ══ 終了 ══ */
+function endGame(win,reason){
+  if(G.over) return; G.over=true;
+  var rs=document.getElementById('scr-result');
+  document.getElementById('r-title').textContent=win?'勝利！🎉':'敗北...';
+  document.getElementById('r-title').style.color=win?'#ffcc00':'#ff6644';
+  document.getElementById('r-sub').textContent=reason;
+  rs.className='on';
+}
+
+/* ══ ログ ══ */
+var LCLS={s:'ls',a:'la',m:'lm',w:'lw',l:'ll'};
+var G_logCount=0;
+function log(t,msg){
+  var list=document.getElementById('g-loglist');
+  if(!list) return;
+  var e=document.createElement('div');
+  e.className='le '+(LCLS[t]||'ls');
+  e.textContent=msg; list.appendChild(e);
+  list.scrollTop=list.scrollHeight;
+  while(list.children.length>80) list.removeChild(list.firstChild);
+  // ログモーダルが閉じている時はバッジを増やす
+  var modal=document.getElementById('log-modal');
+  if(!modal||modal.className!=='open'){
+    G_logCount++;
+    var badge=document.getElementById('log-badge');
+    if(badge){badge.textContent=G_logCount;badge.style.display=G_logCount>0?'inline-block':'none';}
+  }
+}
+function openFieldViewModal(){
+  // 開いているポップアップを全て隠す
+  G_fieldViewPrevPopups=[];
+  var ids=['eff-popup','card-sel-popup','card-action-popup'];
+  for(var i=0;i<ids.length;i++){
+    var el=document.getElementById(ids[i]);
+    if(el&&el.className&&el.className!==''){
+      G_fieldViewPrevPopups.push({id:ids[i],cls:el.className});
+      el.className='';
+    }
+  }
+  // pbtnを無効化
+  var pbtn=document.getElementById('pbtn');
+  if(pbtn) pbtn.disabled=true;
+  // 戻るボタンを表示
+  var btn=document.getElementById('field-view-btn');
+  var cl=document.getElementById('g-centerline');
+  if(cl&&btn){
+    var rect=cl.getBoundingClientRect();
+    btn.style.top=(rect.top + rect.height/2 - 14)+'px';
+  }
+  btn.style.display='block';
+  btn.className='open';
+}
+
+function closeFieldViewModal(){
+  // ポップアップを元に戻す
+  for(var i=0;i<G_fieldViewPrevPopups.length;i++){
+    var el=document.getElementById(G_fieldViewPrevPopups[i].id);
+    if(el) el.className=G_fieldViewPrevPopups[i].cls;
+  }
+  G_fieldViewPrevPopups=[];
+  // pbtnを再有効化
+  var pbtn=document.getElementById('pbtn');
+  if(pbtn) pbtn.disabled=false;
+  // 戻るボタンを完全に隠す
+  var btn=document.getElementById('field-view-btn');
+  btn.className='';
+  btn.style.display='none';
+}
+function toggleLogModal(){
+  var modal=document.getElementById('log-modal');
+  if(!modal) return;
+  if(modal.className==='open'){
+    closeLogModal();
+  } else {
+    modal.className='open';
+    var fvBtn=document.getElementById('field-view-btn');
+    if(fvBtn&&fvBtn.className==='open'){fvBtn.dataset.hidden='1';fvBtn.style.visibility='hidden';}
+    G_logCount=0;
+    var badge=document.getElementById('log-badge');
+    if(badge){badge.textContent='';badge.style.display='none';}
+    var list=document.getElementById('g-loglist');
+    if(list) setTimeout(function(){list.scrollTop=list.scrollHeight;},50);
+  }
+}
+function closeLogModal(){
+  var modal=document.getElementById('log-modal');
+  if(modal) modal.className='';
+  var fvBtn=document.getElementById('field-view-btn');
+  if(fvBtn&&fvBtn.className==='open'){fvBtn.dataset.hidden='';fvBtn.style.visibility='visible';}
+}
+function toggleLog(){toggleLogModal();}  // 後方互換
+
+/* ══ エフェクト ══ */
+function fxFlash(){var e=document.createElement('div');e.className='fxfl';document.body.appendChild(e);setTimeout(function(){e.parentNode&&e.parentNode.removeChild(e);},450);}
+function fxFloat(t,col){var e=document.createElement('div');e.className='fxft';e.textContent=t;e.style.color=col;e.style.left=Math.max(0,window.innerWidth/2-60)+'px';e.style.top=Math.max(0,window.innerHeight/2-30)+'px';document.body.appendChild(e);setTimeout(function(){e.parentNode&&e.parentNode.removeChild(e);},1300);}
+function setPhase(t){
+  var gp=document.getElementById('g-phase'); if(gp) gp.textContent=t;
+  var cp=document.getElementById('center-phase'); if(cp) cp.textContent=t;
+}
+function setPBtn(t){
+  var pbtn=document.getElementById('pbtn');
+  if(pbtn) pbtn.textContent=t;
+}
+</script>
+</body>
+</html>
