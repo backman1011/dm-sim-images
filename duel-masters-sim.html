@@ -1125,52 +1125,73 @@ function oppAtk(atk){
     log('l','相手「'+atk.name+'」('+atk.pow+') → 「'+def.name+'」('+def.pow+') [タップ]');
     battle(atk,def,false);
   } else {
-    var idx=-1;
-    for(var i=0;i<G.myShields.length;i++){if(G.myShields[i].intact){idx=i;break;}}
-    if(idx===-1){log('l','💥 ダイレクトアタック！');endGame(false,atk.name+'のダイレクトアタック');return;}
-    var sh=G.myShields[idx]; G.myShields[idx].intact=false;
-    var rem=0; for(var i=0;i<G.myShields.length;i++) if(G.myShields[i].intact) rem++;
-    log('l','💔 シールドブレイク「'+sh.card.name+'」手札へ（残'+rem+'）');
-    G.myHand.push({id:sh.card.id,name:sh.card.name,cost:sh.card.cost,pow:sh.card.pow,type:sh.card.type,civ:sh.card.civ,icon:sh.card.icon,eff:sh.card.eff,uid:nuid(),twin:sh.card.twin||false,spellName:sh.card.spellName||'',spellCost:sh.card.spellCost||0,spellEff:sh.card.spellEff||''});
-    fxFlash(); shakeShield('msh',idx);
-    if(sh.card.eff&&sh.card.eff.indexOf('S・トリガー')!==-1){log('w','🛡 S・トリガー「'+sh.card.name+'」発動！');spellEff(sh.card,true);}
-    if(sh.card.eff&&sh.card.eff.indexOf('G・ストライク')!==-1){
-      if(G.oppBattle.length>0){
-        var gsOpts=G.oppBattle.map(function(x){return{label:x.name+'（P:'+x.pow+'）',cls:''};});
-        gsOpts.push({label:'✋ G・ストライクを使わない',cls:'no'});
-        showPopup('G・ストライク！','「'+sh.card.name+'」\n相手クリーチャーを1体選ぶ。\nこのターン、そのクリーチャーは攻撃できない。',gsOpts,function(gidx){
-          if(gidx===gsOpts.length-1){log('w','🛡 G・ストライク：使用しない');return;}
-          G.oppBattle[gidx].tapped=true;
-          log('w','🛡 G・ストライク：「'+G.oppBattle[gidx].name+'」このターン攻撃不可！');
-        });
+    // シールドへ攻撃（AIは先頭から順番に割る）
+    var intactIdxs=[];
+    for(var i=0;i<G.myShields.length;i++) if(G.myShields[i].intact) intactIdxs.push(i);
+    if(intactIdxs.length===0){
+      log('l','💥 ダイレクトアタック！'); endGame(false,atk.name+'のダイレクトアタック'); return;
+    }
+    // ブレイク数を判定
+    var oppBc=calcBreakCount(atk, intactIdxs.length);
+    var actual=Math.min(oppBc.count, intactIdxs.length);
+    log('l','相手「'+atk.name+'」プレイヤーへ攻撃！（'+BREAKER_LABEL[oppBc.type]+'）');
+    // AIは先頭から順番に割る
+    for(var bi=0;bi<actual;bi++){
+      oppBreakMyShield(intactIdxs[bi]);
+    }
+    // G・ブレイカー：相手（自分）のシールドも割る
+    if(oppBc.type==='g'){
+      var oppIntact=[];
+      for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) oppIntact.push(i);
+      if(oppIntact.length>0){
+        log('l','⚡ G・ブレイカー：相手自身のシールドも全て割れる！');
+        for(var i=0;i<oppIntact.length;i++) _doBreakOne(oppIntact[i]);
       }
     }
-    // S・バック：闇のカードがシールドから手札に加わった時、捨ててコスト0で呪文を唱えられる
-    if(sh.card.civ==='d'){
-      var sbCards=[];
-      // 手札にあるS・バック持ちの呪文を探す
-      // ※今回は直接「秩序の意志」など固定カード以外にも対応できるよう汎用的に実装
-      // 実際にはシールドから来たカードを捨てて唱える→手札にS・バック呪文があればポップアップ
-      var sbSpells=G.myHand.filter(function(x){return x.type==='spell'&&x.eff&&x.eff.indexOf('S・バック')!==-1;});
-      if(sbSpells.length>0){
-        showCardSelectPopup(
-          'S・バック',
-          '「'+sh.card.name+'」（闇）をシールドから手札に加えた。\nそのカードを捨てて、S・バック持ち呪文をコスト0で唱えてもよい。',
-          sbSpells,
-          function(sel){
-            if(!sel){log('w','🛡 S・バック：使わない');return;}
-            // シールドから来たカードを捨てる
-            G.myHand=G.myHand.filter(function(x){return x.uid!==sh.card.uid;});
-            G.grave.push(sh.card);
-            // S・バック呪文を手札から取り除いて発動
-            G.myHand=G.myHand.filter(function(x){return x.uid!==sel.uid;});
-            G.grave.push(sel);
-            log('w','🛡 S・バック：「'+sh.card.name+'」を捨てて「'+sel.name+'」を無料発動！');
-            spellEff(sel,true);
-          },
-          {skipLabel:'✋ S・バックを使わない'}
-        );
-      }
+  }
+}
+
+function oppBreakMyShield(idx){
+  var sh=G.myShields[idx];
+  if(!sh||!sh.intact) return;
+  G.myShields[idx].intact=false;
+  var rem=0; for(var i=0;i<G.myShields.length;i++) if(G.myShields[i].intact) rem++;
+  G.myHand.push({id:sh.card.id,name:sh.card.name,cost:sh.card.cost,pow:sh.card.pow,type:sh.card.type,civ:sh.card.civ,icon:sh.card.icon,eff:sh.card.eff,uid:nuid(),twin:sh.card.twin||false,spellName:sh.card.spellName||'',spellCost:sh.card.spellCost||0,spellEff:sh.card.spellEff||''});
+  log('l','💔 シールドブレイク「'+sh.card.name+'」手札へ（残'+rem+'）');
+  fxFlash(); shakeShield('msh',idx);
+  // S・トリガー
+  if(sh.card.eff&&sh.card.eff.indexOf('S・トリガー')!==-1){
+    log('w','🛡 S・トリガー「'+sh.card.name+'」発動！'); spellEff(sh.card,true);
+  }
+  // G・ストライク
+  if(sh.card.eff&&sh.card.eff.indexOf('G・ストライク')!==-1&&G.oppBattle.length>0){
+    var gsOpts=G.oppBattle.map(function(x){return{label:x.name+'（P:'+x.pow+'）',cls:''};});
+    gsOpts.push({label:'✋ G・ストライクを使わない',cls:'no'});
+    showPopup('G・ストライク！','「'+sh.card.name+'」\n相手クリーチャーを1体選ぶ。\nこのターン攻撃不可にする。',gsOpts,function(gidx){
+      if(gidx===gsOpts.length-1){log('w','🛡 G・ストライク：使用しない');return;}
+      G.oppBattle[gidx].tapped=true;
+      log('w','🛡 G・ストライク：「'+G.oppBattle[gidx].name+'」このターン攻撃不可！');
+    });
+  }
+  // S・バック
+  if(sh.card.civ==='d'){
+    var sbSpells=G.myHand.filter(function(x){return x.type==='spell'&&x.eff&&x.eff.indexOf('S・バック')!==-1;});
+    if(sbSpells.length>0){
+      showCardSelectPopup(
+        'S・バック',
+        '「'+sh.card.name+'」（闇）をシールドから手札に加えた。\nそのカードを捨てて、S・バック持ち呪文をコスト0で唱えてもよい。',
+        sbSpells,
+        function(sel){
+          if(!sel){log('w','🛡 S・バック：使わない');return;}
+          G.myHand=G.myHand.filter(function(x){return x.uid!==sh.card.uid;});
+          G.grave.push(sh.card);
+          G.myHand=G.myHand.filter(function(x){return x.uid!==sel.uid;});
+          G.grave.push(sel);
+          log('w','🛡 S・バック：「'+sh.card.name+'」を捨てて「'+sel.name+'」を無料発動！');
+          spellEff(sel,true);
+        },
+        {skipLabel:'✋ S・バックを使わない'}
+      );
     }
   }
 }
@@ -2095,41 +2116,41 @@ function doAttack(){
   // マッハファイターは召喚酔いでもクリーチャーへのみ可（シールドは不可）
 
   // ブレイク数を判定
-  var breakCount=1;
-  if(c.eff&&c.eff.indexOf('T・ブレイカー')!==-1) breakCount=3;
-  else if(c.eff&&c.eff.indexOf('W・ブレイカー')!==-1) breakCount=2;
+  var intactShieldsAll=[];
+  for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) intactShieldsAll.push(i);
+  var bc=calcBreakCount(c, intactShieldsAll.length);
+  var breakCount=Math.min(bc.count, intactShieldsAll.length||1);
 
   // 攻撃先選択ポップアップを構築
   var opts=[];
+
+  // クリーチャー攻撃選択肢（攻撃可能なもの全部）
   for(var i=0;i<attackableEnemies.length;i++){
     var e=attackableEnemies[i];
     opts.push({label:'⚔️ '+e.name+'（P:'+e.pow+'）'+(e.tapped?' [タップ]':''),cls:'',uid:e.uid,type:'creature'});
   }
+
+  // プレイヤー攻撃選択肢（1行にまとめる）
   if(canAttackShield){
-    var intactShields=[];
-    for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) intactShields.push(i);
+    var intactShields=intactShieldsAll;
     if(intactShields.length>0){
-      if(breakCount===1 || intactShields.length===1){
-        // シングルブレイカーまたはシールドが1枚：そのままopts追加
-        for(var i=0;i<intactShields.length;i++){
-          opts.push({label:'🛡 シールド '+(intactShields[i]+1)+'枚目を割る',cls:'',shieldIdx:intactShields[i],type:'shield',breakCount:1});
-        }
-      } else {
-        // W/Tブレイカー：シールド複数選択
-        opts.push({label:'🛡 シールドへ攻撃（'+Math.min(breakCount,intactShields.length)+'枚選択）',cls:'yes',type:'shield_multi',breakCount:Math.min(breakCount,intactShields.length),intactShields:intactShields});
-      }
+      var actualBreak=Math.min(breakCount, intactShields.length);
+      var breakLabel = bc.type==='single'
+        ? '🛡 プレイヤーを攻撃（シールド残'+intactShields.length+'枚）'
+        : '🛡 プレイヤーを攻撃（'+BREAKER_LABEL[bc.type]+' / '+actualBreak+'枚）';
+      opts.push({label:breakLabel,cls:'yes',type:'player',intactShields:intactShields,breakCount:actualBreak,hasCreature:attackableEnemies.length>0,bcType:bc.type});
     } else {
       opts.push({label:'💥 ダイレクトアタック！',cls:'yes',type:'direct'});
     }
   }
 
-  if(opts.length===1){
-    execAttack(c,opts[0]);
-  } else if(opts.length===0){
+  if(opts.length===0){
     log('l','⚠️ 攻撃できる対象がありません');
+  } else if(opts.length===1 && opts[0].type==='direct'){
+    execAttack(c,opts[0]);
   } else {
     showPopup(
-      '「'+c.name+'」の攻撃先を選ぶ'+(breakCount>1?' （'+['','','W','T'][breakCount]+'・ブレイカー）':''),
+      '「'+c.name+'」の攻撃先を選ぶ'+(bc.type!=='single'?' （'+BREAKER_LABEL[bc.type]+'）':''),
       '',
       opts,
       function(idx){ execAttack(c,opts[idx]); }
@@ -2161,20 +2182,46 @@ function execAttack(c,target){
         });
       }
     }
-  } else if(target.type==='shield'){
-    breakOneShield(target.shieldIdx);
-    var rem=0; for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) rem++;
-    if(rem===0) log('a','🔥 全シールド破壊！次でダイレクト！');
-  } else if(target.type==='shield_multi'){
-    // W/Tブレイカー：複数シールドを選択させる
-    showShieldSelectPopup(target.intactShields, target.breakCount);
+  } else if(target.type==='player'){
+    // プレイヤーへの攻撃 → 常に選択ポップアップ（シールドを選ぶ権利は攻撃側）
+    breakShields(target.intactShields, target.breakCount, true);
+    // G・ブレイカー：自分のシールドも全部割る
+    if(target.bcType==='g'){
+      var myIntact=[];
+      for(var i=0;i<G.myShields.length;i++) if(G.myShields[i].intact) myIntact.push(i);
+      if(myIntact.length>0){
+        log('a','⚡ G・ブレイカー：自分のシールドも全て割れる！');
+        for(var i=0;i<myIntact.length;i++) oppBreakMyShield(myIntact[i]);
+      }
+    }
   } else if(target.type==='direct'){
     log('a','🎉 ダイレクトアタック！'); fxFloat('ダイレクト！','#ff8844');
     endGame(true,c.name+'のダイレクトアタックで勝利！');
   }
   G.sel=null; render(); updateBtns();
 }
-function breakOneShield(idx){
+/* ══ ブレイク数計算（共通） ══
+   シングル=1 / W=2 / T=3 / Q=4 / パワード=パワー÷6000 / ワールド=全部 / G=全部+自分全部
+*/
+function calcBreakCount(c, shieldCount){
+  var eff = c.eff || '';
+  var pow = c.pow || 0;
+  if(eff.indexOf('G・ブレイカー')!==-1)       return {count: shieldCount, type:'g'};
+  if(eff.indexOf('ワールド・ブレイカー')!==-1) return {count: shieldCount, type:'world'};
+  if(eff.indexOf('Q・ブレイカー')!==-1)        return {count: 4,           type:'q'};
+  if(eff.indexOf('T・ブレイカー')!==-1)        return {count: 3,           type:'t'};
+  if(eff.indexOf('W・ブレイカー')!==-1)        return {count: 2,           type:'w'};
+  if(eff.indexOf('パワード・ブレイカー')!==-1) return {count: Math.max(1, Math.floor(pow/6000)), type:'powered'};
+  return {count: 1, type:'single'};
+}
+var BREAKER_LABEL = {single:'シングルブレイカー', w:'W・ブレイカー', t:'T・ブレイカー', q:'Q・ブレイカー', powered:'パワード・ブレイカー', world:'ワールド・ブレイカー', g:'G・ブレイカー'};
+/* ══ シールドブレイク統合処理 ══
+   _doBreakOne(idx)              : シールド1枚を即割る（内部用）
+   breakShields(intactIdxs, needed) : 枚数に応じて即割る or 選択ポップアップ
+     needed=1 → 即割る（ポップアップなし）
+     needed>=2 → 選択ポップアップ
+*/
+function _doBreakOne(idx){
   var sh=G.oppShields[idx];
   if(!sh||!sh.intact) return;
   G.oppShields[idx].intact=false;
@@ -2182,8 +2229,12 @@ function breakOneShield(idx){
   G.oppHand.push({id:sh.card.id,name:sh.card.name,cost:sh.card.cost,pow:sh.card.pow,type:sh.card.type,civ:sh.card.civ,icon:sh.card.icon,eff:sh.card.eff,uid:nuid(),twin:sh.card.twin||false,spellName:sh.card.spellName||'',spellCost:sh.card.spellCost||0,spellEff:sh.card.spellEff||''});
   log('a','💥 シールド'+(idx+1)+'をブレイク「'+sh.card.name+'」（相手残'+rem+'）');
   shakeShield('osh',idx); fxFloat('ブレイク！','#ff8844');
-  // S・トリガー / G・ストライク / S・バック
-  if(sh.card.eff&&sh.card.eff.indexOf('S・トリガー')!==-1){log('w','🛡 S・トリガー「'+sh.card.name+'」発動！');spellEff(sh.card,true);}
+  // S・トリガー
+  if(sh.card.eff&&sh.card.eff.indexOf('S・トリガー')!==-1){
+    log('w','🛡 S・トリガー「'+sh.card.name+'」発動！');
+    spellEff(sh.card,true);
+  }
+  // G・ストライク
   if(sh.card.eff&&sh.card.eff.indexOf('G・ストライク')!==-1&&G.oppBattle.length>0){
     var gsOpts=G.oppBattle.map(function(x){return{label:x.name+'（P:'+x.pow+'）',cls:''};});
     gsOpts.push({label:'✋ G・ストライクを使わない',cls:'no'});
@@ -2195,15 +2246,22 @@ function breakOneShield(idx){
   }
 }
 
-/* W/Tブレイカー用：シールドを複数選択するポップアップ */
-function showShieldSelectPopup(intactIdxs, needed){
+function breakShields(intactIdxs, needed, forceSelect){
+  var actual=Math.min(needed, intactIdxs.length);
+  // 1枚かつforceSelectなしなら即割る
+  if(actual===1 && !forceSelect){
+    _doBreakOne(intactIdxs[0]);
+    var rem=0; for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) rem++;
+    if(rem===0) log('a','🔥 全シールド破壊！次でダイレクト！');
+    render(); updateBtns();
+    return;
+  }
+  // 2枚以上 or forceSelect=true は選択ポップアップ
   var selected=[];
-  // eff-popupを流用してカスタムUIを表示
-  document.getElementById('eff-title').textContent='シールドを'+needed+'枚選んで割る';
-  document.getElementById('eff-desc').textContent='クリックして選択（'+needed+'枚）→ 決定';
+  document.getElementById('eff-title').textContent='シールドを'+actual+'枚選んで割る';
+  document.getElementById('eff-desc').textContent='クリックして選択（'+actual+'枚）→ 決定';
   var btns=document.getElementById('eff-btns');
   btns.innerHTML='';
-  // シールドボタン群
   var shWrap=document.createElement('div');
   shWrap.style.cssText='display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-bottom:8px;';
   intactIdxs.forEach(function(idx){
@@ -2220,29 +2278,26 @@ function showShieldSelectPopup(intactIdxs, needed){
         var pos=selected.indexOf(i);
         if(pos>=0){
           selected.splice(pos,1);
-          b.style.boxShadow='';
-          b.style.transform='';
-          b.style.borderColor='';
-        } else if(selected.length<needed){
+          b.style.boxShadow=''; b.style.transform=''; b.style.borderColor='';
+        } else if(selected.length<actual){
           selected.push(i);
           b.style.boxShadow='0 0 12px rgba(255,204,0,.8)';
           b.style.transform='translateY(-6px) scale(1.08)';
           b.style.borderColor='var(--gold)';
         }
-        confirmBtn.disabled=(selected.length!==needed);
+        confirmBtn.disabled=(selected.length!==actual);
       };
     })(idx);
     shWrap.appendChild(b);
   });
   btns.appendChild(shWrap);
-  // 決定ボタン
   var confirmBtn=document.createElement('button');
   confirmBtn.className='eff-btn yes';
-  confirmBtn.textContent='✅ 決定（'+needed+'枚ブレイク）';
+  confirmBtn.textContent='✅ 決定（'+actual+'枚ブレイク）';
   confirmBtn.disabled=true;
   confirmBtn.onclick=function(){
     document.getElementById('eff-popup').className='';
-    selected.forEach(function(idx){ breakOneShield(idx); });
+    selected.forEach(function(idx){ _doBreakOne(idx); });
     var rem=0; for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) rem++;
     if(rem===0) log('a','🔥 全シールド破壊！次でダイレクト！');
     render(); updateBtns();
@@ -2250,6 +2305,10 @@ function showShieldSelectPopup(intactIdxs, needed){
   btns.appendChild(confirmBtn);
   document.getElementById('eff-popup').className='open';
 }
+
+/* 後方互換 */
+function breakOneShield(idx){ _doBreakOne(idx); render(); updateBtns(); }
+function showShieldSelectPopup(intactIdxs, needed){ breakShields(intactIdxs, needed); }
 
 function battle(atk,def,isMe){
   // スレイヤー判定：スレイヤー持ちは勝敗に関わらず相手を破壊
