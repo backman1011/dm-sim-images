@@ -2138,7 +2138,8 @@ function doAttack(){
   // ブレイク数を判定
   var intactShieldsAll=[];
   for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) intactShieldsAll.push(i);
-  var bc=calcBreakCount(c, intactShieldsAll.length);
+  var bcOptions=calcBreakOptions(c, intactShieldsAll.length);
+  var bc=bcOptions.reduce(function(max,o){return o.count>max.count?o:max;},bcOptions[0]);
   var breakCount=Math.min(bc.count, intactShieldsAll.length||1);
 
   // 攻撃先選択ポップアップを構築
@@ -2150,15 +2151,31 @@ function doAttack(){
     opts.push({label:'⚔️ '+e.name+'（P:'+e.pow+'）'+(e.tapped?' [タップ]':''),cls:'',uid:e.uid,type:'creature'});
   }
 
-  // プレイヤー攻撃選択肢（1行にまとめる）
+  // プレイヤー攻撃選択肢
   if(canAttackShield){
     var intactShields=intactShieldsAll;
     if(intactShields.length>0){
-      var actualBreak=Math.min(breakCount, intactShields.length);
-      var breakLabel = bc.type==='single'
-        ? '🛡 プレイヤーを攻撃（シールド残'+intactShields.length+'枚）'
-        : '🛡 プレイヤーを攻撃（'+BREAKER_LABEL[bc.type]+' / '+actualBreak+'枚）';
-      opts.push({label:breakLabel,cls:'yes',type:'player',intactShields:intactShields,breakCount:actualBreak,hasCreature:attackableEnemies.length>0,bcType:bc.type});
+      if(bcOptions.length>1){
+        // 509.2c：複数ブレイカー能力がある場合、プレイヤーが選択
+        // ただし1枚以下は選べないため最小の能力が下限
+        var minCount=bcOptions.reduce(function(min,o){return o.count<min.count?o:min;},bcOptions[0]).count;
+        for(var bi=0;bi<bcOptions.length;bi++){
+          var bco=bcOptions[bi];
+          var actualBreak=Math.min(bco.count, intactShields.length);
+          opts.push({
+            label:'🛡 プレイヤーを攻撃（'+BREAKER_LABEL[bco.type]+' / '+actualBreak+'枚）',
+            cls:'yes',type:'player',
+            intactShields:intactShields,breakCount:actualBreak,
+            hasCreature:attackableEnemies.length>0,bcType:bco.type
+          });
+        }
+      } else {
+        var actualBreak=Math.min(breakCount, intactShields.length);
+        var breakLabel = bc.type==='single'
+          ? '🛡 プレイヤーを攻撃（シールド残'+intactShields.length+'枚）'
+          : '🛡 プレイヤーを攻撃（'+BREAKER_LABEL[bc.type]+' / '+actualBreak+'枚）';
+        opts.push({label:breakLabel,cls:'yes',type:'player',intactShields:intactShields,breakCount:actualBreak,hasCreature:attackableEnemies.length>0,bcType:bc.type});
+      }
     } else {
       opts.push({label:'💥 ダイレクトアタック！',cls:'yes',type:'direct'});
     }
@@ -2169,12 +2186,10 @@ function doAttack(){
   } else if(opts.length===1 && opts[0].type==='direct'){
     execAttack(c,opts[0]);
   } else {
-    showPopup(
-      '「'+c.name+'」の攻撃先を選ぶ'+(bc.type!=='single'?' （'+BREAKER_LABEL[bc.type]+'）':''),
-      '',
-      opts,
-      function(idx){ execAttack(c,opts[idx]); }
-    );
+    var popTitle = '「'+c.name+'」の攻撃先を選ぶ';
+    if(bcOptions.length>1) popTitle+=' （ブレイカー能力を選択）';
+    else if(bc.type!=='single') popTitle+=' （'+BREAKER_LABEL[bc.type]+'）';
+    showPopup(popTitle,'',opts,function(idx){ execAttack(c,opts[idx]); });
   }
 }
 
@@ -2223,16 +2238,45 @@ function execAttack(c,target){
 /* ══ ブレイク数計算（共通） ══
    シングル=1 / W=2 / T=3 / Q=4 / パワード=パワー÷6000 / ワールド=全部 / G=全部+自分全部
 */
-function calcBreakCount(c, shieldCount){
+/* ══ ブレイク数計算（複数ブレイカー能力対応）
+   総合ルール509.2c：複数のブレイカー能力を持つ場合、
+   プレイヤーがどの能力を使うかを選択できる。
+   ただし最小（1枚）を選ぶことはできない。
+   戻り値：能力候補の配列 [{count, type}, ...]
+   候補が1つなら即決定、複数なら選択ポップアップへ
+══ */
+function calcBreakOptions(c, shieldCount){
   var eff = c.eff || '';
   var pow = c.pow || 0;
-  if(eff.indexOf('G・ブレイカー')!==-1)       return {count: shieldCount, type:'g'};
-  if(eff.indexOf('ワールド・ブレイカー')!==-1) return {count: shieldCount, type:'world'};
-  if(eff.indexOf('Q・ブレイカー')!==-1)        return {count: 4,           type:'q'};
-  if(eff.indexOf('T・ブレイカー')!==-1)        return {count: 3,           type:'t'};
-  if(eff.indexOf('W・ブレイカー')!==-1)        return {count: 2,           type:'w'};
-  if(eff.indexOf('パワード・ブレイカー')!==-1) return {count: Math.max(1, Math.floor(pow/6000)), type:'powered'};
-  return {count: 1, type:'single'};
+  var options = [];
+
+  if(eff.indexOf('G・ブレイカー')!==-1)       options.push({count: shieldCount, type:'g'});
+  if(eff.indexOf('ワールド・ブレイカー')!==-1) options.push({count: shieldCount, type:'world'});
+  if(eff.indexOf('Q・ブレイカー')!==-1)        options.push({count: 4,           type:'q'});
+  if(eff.indexOf('T・ブレイカー')!==-1)        options.push({count: 3,           type:'t'});
+  if(eff.indexOf('W・ブレイカー')!==-1)        options.push({count: 2,           type:'w'});
+  if(eff.indexOf('パワード・ブレイカー')!==-1) options.push({count: Math.max(1, Math.floor(pow/6000)), type:'powered'});
+
+  // 能力なしはシングル（1枚）
+  if(options.length === 0) return [{count: 1, type:'single'}];
+
+  // 重複除去（同じcountのものは最初の1つだけ残す）
+  var seen = {};
+  options = options.filter(function(o){
+    if(seen[o.count]) return false;
+    seen[o.count] = true;
+    return true;
+  });
+
+  // 509.2c：1枚以下を選ぶことはできない（最低でも最小の能力を使う）
+  // ただし最大の能力より小さい能力は選択肢として残す
+  return options;
+}
+
+// 後方互換：単一の結果が欲しい場合（最大のものを返す）
+function calcBreakCount(c, shieldCount){
+  var options = calcBreakOptions(c, shieldCount);
+  return options.reduce(function(max, o){ return o.count > max.count ? o : max; }, options[0]);
 }
 var BREAKER_LABEL = {single:'シングルブレイカー', w:'W・ブレイカー', t:'T・ブレイカー', q:'Q・ブレイカー', powered:'パワード・ブレイカー', world:'ワールド・ブレイカー', g:'G・ブレイカー'};
 /* ══ シールドブレイク統合処理 ══
@@ -2305,24 +2349,24 @@ function breakShields(intactIdxs, needed, forceSelect){
           b.style.transform='translateY(-6px) scale(1.08)';
           b.style.borderColor='var(--gold)';
         }
-        confirmBtn.disabled=(selected.length!==actual);
+        document.getElementById('eff-confirm').disabled=(selected.length!==actual);
       };
     })(idx);
     shWrap.appendChild(b);
   });
   btns.appendChild(shWrap);
-  var confirmBtn=document.createElement('button');
-  confirmBtn.className='eff-btn yes';
-  confirmBtn.textContent='✅ 決定（'+actual+'枚ブレイク）';
+  var confirmBtn=document.getElementById('eff-confirm');
   confirmBtn.disabled=true;
-  confirmBtn.onclick=function(){
-    document.getElementById('eff-popup').className='';
+  confirmBtn.textContent='✅ 決定（'+actual+'枚ブレイク）';
+  G_effPopupSelected='shield';
+  G_effPopupCallback=function(){
+    confirmBtn.textContent='✅ 決定';
     selected.forEach(function(idx){ _doBreakOne(idx); });
     var rem=0; for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) rem++;
     if(rem===0) log('a','🔥 全シールド破壊！次でダイレクト！');
     render(); updateBtns();
   };
-  btns.appendChild(confirmBtn);
+  G_popupWaiting=true;
   document.getElementById('eff-popup').className='open';
 }
 
