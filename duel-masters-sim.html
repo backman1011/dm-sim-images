@@ -246,6 +246,8 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
   letter-spacing:.02em;
   box-shadow:0 0 6px rgba(255,204,0,.7);
 }
+.card.effing{box-shadow:0 0 0 2px #ffcc00,0 0 16px rgba(255,204,0,.6);animation:effingPulse 0.8s ease-in-out infinite alternate;}
+@keyframes effingPulse{from{box-shadow:0 0 0 2px #ffcc00,0 0 8px rgba(255,204,0,.4);}to{box-shadow:0 0 0 3px #ffee44,0 0 24px rgba(255,238,68,.8);}}
 .card.flash-once{animation:flashOnce 1.0s ease-out forwards;}
 @keyframes flashOnce{
   0%  {box-shadow:0 0 0 2px #fff,0 0 8px rgba(255,255,255,.4);filter:brightness(1);}
@@ -262,7 +264,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
   0%  {width:10px;height:10px;transform:translate(-50%,-50%) scale(0);opacity:1;}
   100%{width:10px;height:10px;transform:translate(-50%,-50%) scale(8);opacity:0;}
 }
-.card-badges{display:flex;gap:2px;justify-content:flex-start;flex-wrap:wrap;position:absolute;bottom:-18px;left:0;min-height:14px;}
+.card-badges{display:flex;gap:2px;justify-content:flex-start;flex-wrap:wrap;margin-top:2px;min-height:14px;}
 .badge{font-size:.42rem;font-weight:900;padding:1px 3px;border-radius:3px;line-height:1.4;letter-spacing:.02em;}
 .badge-sick{background:rgba(60,60,60,.75);color:#888;border:1px solid #555;}
 .badge-mf{background:rgba(80,220,160,.85);color:#000;}
@@ -297,6 +299,42 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .card.tap.sel{transform:rotate(18deg) translateY(-4px) scale(1.06);}
 .card.sealed{opacity:.3;filter:grayscale(.9);}
 .card.sealed::before{content:'🔒';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.2rem;z-index:2;}
+/* 山札表示 */
+.deck-pile{
+  display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;
+}
+.deck-card{
+  width:34px;height:46px;border-radius:5px;
+  background:linear-gradient(135deg,#12122a,#1c1c3a);
+  border:2px solid rgba(100,100,180,.5);
+  position:relative;
+  box-shadow:0 2px 6px rgba(0,0,0,.5);
+  transition:box-shadow .3s;
+}
+/* 枚数に応じた厚み */
+.deck-card.thick-3{box-shadow:
+  2px 2px 0 rgba(15,15,40,.95),
+  4px 4px 0 rgba(15,15,40,.85),
+  6px 6px 0 rgba(15,15,40,.75),
+  8px 8px 0 rgba(15,15,40,.65),
+  9px 9px 5px rgba(0,0,0,.5);}
+.deck-card.thick-2{box-shadow:
+  2px 2px 0 rgba(15,15,40,.95),
+  4px 4px 0 rgba(15,15,40,.85),
+  5px 5px 3px rgba(0,0,0,.4);}
+.deck-card.thick-1{box-shadow:
+  1px 1px 0 rgba(15,15,40,.9),
+  2px 2px 2px rgba(0,0,0,.3);}
+.deck-card.thick-0{
+  opacity:.35;
+  box-shadow:none;
+}
+.deck-cnt{
+  font-size:.5rem;font-weight:700;
+  color:rgba(255,255,255,.5);
+  letter-spacing:.03em;
+}
+.deck-card.thick-0 + .deck-cnt{color:rgba(255,100,100,.5);}
 /* 召喚酔いヒヨコ演出 */
 .chick-orbit{
   position:absolute;
@@ -426,8 +464,6 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 #cm-meta{font-size:.65rem;color:var(--muted);}
 #cm-eff{font-size:.65rem;color:#ddd;line-height:1.8;white-space:pre-wrap;}
 #cm-eff-twin{font-size:.62rem;color:#bb99ff;line-height:1.8;white-space:pre-wrap;border-top:1px solid rgba(255,255,255,.1);padding-top:6px;margin-top:2px;display:none;}
-#cm-close{padding:6px 20px;background:rgba(255,204,0,.1);border:1px solid var(--gold);border-radius:18px;color:var(--gold);font-size:.65rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;flex-shrink:0;}
-#cm-close:hover{background:rgba(255,204,0,.22);}
 
 /* ── 墓地・マナ閲覧モーダル ── */
 #zone-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.72);z-index:200;align-items:center;justify-content:center;}
@@ -466,7 +502,6 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .zone-btn{padding:5px 6px;border-radius:6px;border:1px solid rgba(255,255,255,.15);background:rgba(255,255,255,.05);color:rgba(255,255,255,.7);font-size:.58rem;font-family:'Noto Sans JP',sans-serif;cursor:pointer;text-align:left;transition:all .15s;}
 .zone-btn:hover{background:rgba(255,255,255,.12);border-color:var(--gold);color:var(--gold);}
 .zone-btn span{float:right;color:var(--gold);font-weight:700;}
-.deck-counts{display:flex;justify-content:space-around;padding:2px 6px;font-size:.52rem;color:rgba(255,255,255,.35);}
 /* ── 場を見る：戻るボタン ── */
 #field-view-btn{display:none;position:fixed;left:50%;transform:translateX(-50%);z-index:800;padding:6px 20px;background:rgba(0,0,0,.92);border:2px solid var(--gold);border-radius:20px;color:var(--gold);font-size:.65rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;box-shadow:0 2px 12px rgba(0,0,0,.6);letter-spacing:.04em;white-space:nowrap;}
 #field-view-btn.open{display:block;}
@@ -560,6 +595,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
         <button class="grave-btn opp-grave" onclick="showGraveModal('opp')">🪦<span id="ogcnt">0</span></button>
         <div class="shields" id="osh"></div>
         <span class="field-lbl">シールド <span id="osc">5</span></span>
+        <div class="deck-pile" id="opp-deck-pile"><div class="deck-card thick-3" id="opp-deck-card"></div><div class="deck-cnt"><span id="odcnt">40</span>枚</div></div>
       </div>
 
       <!-- 相手バトルゾーン -->
@@ -586,6 +622,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
         <button class="grave-btn my-grave" onclick="showGraveModal('my')">🪦<span id="gcnt">0</span></button>
         <div class="shields" id="msh"></div>
         <span class="field-lbl">シールド <span id="msc">5</span></span>
+        <div class="deck-pile" id="my-deck-pile"><div class="deck-card thick-3" id="my-deck-card"></div><div class="deck-cnt"><span id="dcnt">40</span>枚</div></div>
       </div>
 
       <!-- 自分マナ（シールドの下） -->
@@ -665,7 +702,6 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
       <div id="cm-eff"></div>
       <div id="cm-eff-twin"></div>
     </div>
-    <button id="cm-close" onclick="closeCardModal()">✕ 閉じる</button>
   </div>
 </div>
 
@@ -719,37 +755,40 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 */
 var VERSION_LOG = [
   {
+    ver: 'v1.4.1', date: '2025-05-14',
+    logs: [
+      {type:'fix', text:'onEntered/onSummonにdoneコールバックを追加し、効果処理後にふわふわが残る問題を根本修正'},
+      {type:'chg', text:'G_effectDone/callEffectDoneIfPendingを廃止し設計をシンプル化'},
+    ]
+  },
+  {
+    ver: 'v1.4.0', date: '2025-05-14',
+    logs: [
+      {type:'add', text:'誘発効果キューシステムを実装（複数同時誘発時に解決順を選択可能）'},
+      {type:'fix', text:'ティンパニ＋ベラドンナ同時誘発時に効果が無視される問題を修正'},
+    ]
+  },
+  {
     ver: 'v1.3.2', date: '2025-05-14',
     logs: [
-      {type:'add', text:'召喚酔いカードにヒヨコ🐥2匹が周回する演出を追加'},
-      {type:'fix', text:'ヒヨコの回転中心・位置ずれを修正'},
+      {type:'add', text:'召喚酔いカードにヒヨコ🐤2匹が周回する演出を追加'},
       {type:'chg', text:'召喚酔い中のカードの暗転エフェクトを廃止'},
-    ]
-  },
-  {
-    ver: 'v1.3.2', date: '2025-05-14',
-    logs: [
-      {type:'add', text:'召喚酔いカードにヒヨコ🐥2匹が周回する演出を追加'},
-      {type:'fix', text:'ヒヨコの回転中心がカード中央にならない問題を修正'},
+      {type:'fix', text:'ヒヨコの回転中心・位置ずれを修正'},
     ]
   },
   {
     ver: 'v1.3.1', date: '2025-05-14',
     logs: [
-      {type:'chg', text:'常在型能力エフェクトを光輪 → カード中央下部の⚡点滅バッジに変更'},
-    ]
-  },
-  {
-    ver: 'v1.3.1', date: '2025-05-14',
-    logs: [
-      {type:'fix', text:'常在型能力の光輪エフェクトが表示されない問題を修正'},
-      {type:'chg', text:'CARD_EFFECTSにpermanentフラグを追加し常在型判定を汎用化'},
+      {type:'add', text:'常在型能力持ちカードに！バッジを追加（CARD_EFFECTSのpermanentフラグで管理）'},
+      {type:'fix', text:'誘発型能力のないカード召喚時に点滅エフェクトが出る問題を修正'},
+      {type:'fix', text:'マーダンロウ・フットレス召喚後に点滅が消えない問題を修正'},
     ]
   },
   {
     ver: 'v1.3.0', date: '2025-05-14',
     logs: [
-      {type:'chg', text:'常在型能力エフェクトをパルス点滅 → 回転光輪（オーラ）に変更'},
+      {type:'add', text:'召喚・呪文・場に出る、全アクションにバーンエフェクト追加'},
+      {type:'chg', text:'常在型能力エフェクトをパルス点滅 → バーンエフェクトに変更'},
     ]
   },
   {
@@ -768,13 +807,13 @@ var VERSION_LOG = [
     ver: 'v1.2.0', date: '2025-05-13',
     logs: [
       {type:'add', text:'召喚・呪文・場に出る、全アクションにバーンエフェクト追加'},
+      {type:'fix', text:'ティンパニ召喚時にエフェクトが出ない問題を修正'},
+      {type:'fix', text:'ティンパニ onSummon が2回発火する問題を修正'},
     ]
   },
   {
     ver: 'v1.1.1', date: '2025-05-13',
     logs: [
-      {type:'fix', text:'ティンパニ召喚時にエフェクトが出ない問題を修正'},
-      {type:'fix', text:'ティンパニ onSummon が2回発火する問題を修正'},
       {type:'fix', text:'アビスラッシュをプレイヤーのみ攻撃可に修正'},
       {type:'fix', text:'ジャガイスト：攻撃したらターン終了時山札の下に修正'},
       {type:'fix', text:'秩序の意志：次の自分ターン開始時に封印解除'},
@@ -1773,14 +1812,14 @@ var CARD_EFFECTS = {
 
   /* ────── ベラドンナ ────── */
   belladonna: {
-    onEntered: function(c){
+    onEntered: function(c, done){
       var bellUid=c.uid;
       var canHands=G.oppHand.length>0, canMana=G.myDeck.length>0;
       showPopup('悪魔妖精 ベラドンナ',
         'このクリーチャーを破壊してもよい。\nそうしたら①②のどちらかを選ぶ。\n\nこのクリーチャーを破壊しますか？',
         [{label:'✅ 破壊する',cls:'yes'},{label:'✋ 破壊しない',cls:'no'}],
         function(idx){
-          if(idx===1){log('w','💠 ベラドンナ：破壊しない');render();return;}
+          if(idx===1){log('w','💠 ベラドンナ：破壊しない');render();done();return;}
           // 破壊
           var target=null;
           for(var bi=0;bi<G.myBattle.length;bi++){if(G.myBattle[bi].uid===bellUid){target=G.myBattle[bi];break;}}
@@ -1791,7 +1830,7 @@ var CARD_EFFECTS = {
           var opts=[];
           if(canHands) opts.push({label:'① 相手の手札を1枚見ないで選び捨てさせる',cls:''});
           if(canMana)  opts.push({label:'② 山札の上から1枚をマナゾーンに置く',cls:''});
-          if(opts.length===0){log('w','💠 ベラドンナ：効果対象なし');return;}
+          if(opts.length===0){log('w','💠 ベラドンナ：効果対象なし');done();return;}
           function doBella(choice){
             if(opts[choice]&&opts[choice].label.indexOf('①')>=0){
               if(G.oppHand.length>0){var ri=Math.floor(Math.random()*G.oppHand.length);var d=G.oppHand.splice(ri,1)[0];G.oppGrave.push(d);}
@@ -1802,6 +1841,7 @@ var CARD_EFFECTS = {
               log('w','💠 ベラドンナ：② 「'+top.name+'」をマナゾーンへ'+(im?' (多色・タップ)':''));
             }
             render();
+            done();
           }
           if(opts.length===1){doBella(0);return;}
           showPopup('悪魔妖精 ベラドンナ','①②のどちらかを選ぶ。',opts,function(ch){doBella(ch);});
@@ -1812,23 +1852,25 @@ var CARD_EFFECTS = {
 
   /* ────── マーダン=ロウ ────── */
   maardan: {
-    onEntered: function(c){
+    onEntered: function(c, done){
       var crs=G.oppHand.filter(function(x){return x.type==='creature';});
-      if(crs.length===0){log('w','🌑 マーダン：相手手札にクリーチャーなし');G_popupSourceUid=null;return;}
+      if(crs.length===0){log('w','🌑 マーダン：相手手札にクリーチャーなし');done();return;}
       if(G.oppHand.length===1&&crs.length===1){
         G.oppHand=G.oppHand.filter(function(x){return x.uid!==crs[0].uid;});
         G.oppGrave.push(crs[0]);
-        log('w','🌑 マーダン：「'+crs[0].name+'」を捨てさせた');G_popupSourceUid=null;return;
+        log('w','🌑 マーダン：「'+crs[0].name+'」を捨てさせた');done();return;
       }
       var allHand=G.oppHand.map(function(x){return Object.assign({},x,{_disabled:x.type!=='creature'});});
       showCardSelectPopup('深淵の壊炉 マーダン=ロウ',
         '',
         allHand,
         function(sel){
-          if(!sel)return;
-          G.oppHand=G.oppHand.filter(function(x){return x.uid!==sel.uid;});
-          G.oppGrave.push(sel);
-          log('w','🌑 マーダン：「'+sel.name+'」を捨てさせた');
+          if(sel){
+            G.oppHand=G.oppHand.filter(function(x){return x.uid!==sel.uid;});
+            G.oppGrave.push(sel);
+            log('w','🌑 マーダン：「'+sel.name+'」を捨てさせた');
+          }
+          done();
         }
       );
     },
@@ -1847,7 +1889,7 @@ var CARD_EFFECTS = {
 
   /* ────── ア:エヌ:マクア ────── */
   aenumakua: {
-    onEntered: function(c){
+    onEntered: function(c, done){
       showPopup('ア:エヌ:マクア','出た時：次のうちいずれか1つを選ぶ。',
         [{label:'① 山札上2枚をタップインしマナゾーンへ。その後マナ1枚を手札へ',cls:''},
          {label:'② プレイヤーを1人選ぶ。その墓地を山札の下に置く',cls:''},
@@ -1869,7 +1911,10 @@ var CARD_EFFECTS = {
                 var m=G.myMana[mi]; G.myMana.splice(mi,1);
                 G.myHand.push({id:m.id||'',name:m.name,cost:m.cost||0,pow:m.pow||0,type:m.type||'spell',civ:m.civ==='nd'?'m':m.civ,icon:m.icon||'🌿',eff:m.eff||'',uid:nuid()});
                 log('w','🌿 マクア①：「'+m.name+'」をマナから手札へ');
+                done();
               });
+            } else {
+              done();
             }
           } else if(idx===1){
             showPopup('ア:エヌ:マクア②','墓地を山札の下に置くプレイヤーを選ぶ。',
@@ -1878,9 +1923,11 @@ var CARD_EFFECTS = {
               function(pi){
                 if(pi===0){var g=G.grave.slice();G.grave=[];for(var i=0;i<g.length;i++)G.myDeck.unshift(g[i]);log('w','🌿 マクア②：自分墓地'+g.length+'枚を山札の下へ');}
                 else{var og=G.oppGrave.slice();G.oppGrave=[];for(var i=0;i<og.length;i++)G.oppDeck.unshift(og[i]);log('w','🌿 マクア②：相手墓地'+og.length+'枚を山札の下へ');}
+                done();
               });
           } else {
             log('w','🌿 マクア③：相手のコスト5以下非クリーチャーエレメントをマナへ（このシミュでは適用対象なし）');
+            done();
           }
         }
       );
@@ -1889,12 +1936,12 @@ var CARD_EFFECTS = {
 
   /* ────── ティンパニ=シンバリー ────── */
   tinpani: {
-    onSummon: function(c){
+    onSummon: function(c, done){
       showPopup('ティンパニ=シンバリー ヨビニオン',
         '山札の上から、コスト'+c.cost+'未満のクリーチャーが\n出るまで表向きにしてもよい。残りは山札の下へ。',
         [{label:'✅ ヨビニオン発動',cls:'yes'},{label:'✋ 発動しない',cls:'no'}],
         function(vi){
-          if(vi===1){log('w','💠 ティンパニ：ヨビニオン発動しない');return;}
+          if(vi===1){log('w','💠 ティンパニ：ヨビニオン発動しない');done();return;}
           var revealed=[],found=null;
           while(G.myDeck.length>0){
             var top=G.myDeck.pop(); revealed.push(top);
@@ -1904,7 +1951,7 @@ var CARD_EFFECTS = {
             log('w','💠 ティンパニ：ヨビニオン 対象なし');
             revealed.sort(function(){return Math.random()-.5;});
             for(var i=0;i<revealed.length;i++)G.myDeck.unshift(revealed[i]);
-            render();return;
+            render();done();return;
           }
           log('w','💠 ティンパニ：ヨビニオン「'+found.name+'」を発見！バトルゾーンへ');
           G.myBattle.push({id:found.id,name:found.name,cost:found.cost,pow:found.pow,type:found.type,civ:found.civ,icon:found.icon,eff:found.eff,uid:nuid(),tapped:false,summoned:true,twin:found.twin,spellName:found.spellName,spellCost:found.spellCost,spellEff:found.spellEff});
@@ -1913,7 +1960,7 @@ var CARD_EFFECTS = {
           rest.sort(function(){return Math.random()-.5;});
           for(var i=0;i<rest.length;i++)G.myDeck.unshift(rest[i]);
           log('w','💠 ティンパニ：残り'+rest.length+'枚をシャッフルして山札の下へ');
-          render();updateBtns();
+          render();updateBtns();done();
         }
       );
     },
@@ -1932,14 +1979,15 @@ var CARD_EFFECTS = {
 
   /* ────── ドミー=ゾー ────── */
   dommy: {
-    onEntered: function(c){
+    onEntered: function(c, done){
       showPopup('ドミー=ゾー','自分の山札の上から5枚を墓地に置いてもよい。',
         [{label:'✅ 5枚墓地に置く',cls:'yes'},{label:'✋ 置かない',cls:'no'}],
         function(di){
-          if(di===1){log('w','🌑 ドミー：墓地に置かない');return;}
+          if(di===1){log('w','🌑 ドミー：墓地に置かない');done();return;}
           var milled=[];
           for(var i=0;i<5;i++){if(G.myDeck.length>0){var top=G.myDeck.pop();G.grave.push(top);milled.push(top.name);}}
           log('w','🌑 ドミー：'+milled.length+'枚墓地へ（'+milled.slice(0,3).join('、')+(milled.length>3?'…':'')+'）');
+          done();
         }
       );
     },
@@ -1959,23 +2007,24 @@ var CARD_EFFECTS = {
 
   /* ────── 邪幽 ジャガイスト ────── */
   jagaisuto: {
-    onEntered: function(c){
+    onEntered: function(c, done){
       if(G.myHand.length<2){
         log('w','🌑 ジャガイスト：手札が2枚未満のため発動不可');
-        return;
+        done();return;
       }
       showCardSelectPopup(
         '邪幽 ジャガイスト',
         '手札から2枚選んで捨てる。そうしたらアビス・メクレイド5。',
         G.myHand,
         function(sels){
-          if(!sels||sels.length<2){log('w','🌑 ジャガイスト：キャンセル');return;}
+          if(!sels||sels.length<2){log('w','🌑 ジャガイスト：キャンセル');done();return;}
           for(var i=0;i<sels.length;i++){
             G.myHand=G.myHand.filter(function(x){return x.uid!==sels[i].uid;});
             G.grave.push(sels[i]);
           }
           log('w','🌑 ジャガイスト：「'+sels[0].name+'」「'+sels[1].name+'」を捨てた → アビス・メクレイド5！');
           execMekleido5(true);
+          done();
         },
         {maxSelect:2}
       );
@@ -2090,80 +2139,128 @@ var CARD_EFFECTS = {
    ※ playCardDirect では両方を呼ぶ
    ※ メクレイド・アビスベル等では myEnteredEff のみ呼ぶ
 ══ */
-// isSummon=true のとき、onEntered完了後さらに onSummon（ヨビニオン等）をチェーン実行する
+/* ══ 誘発効果キューシステム ══ */
+var G_effectQueue = [];
+
+function queueEffect(label, cardUid, fn){
+  G_effectQueue.push({label:label, cardUid:cardUid, fn:fn});
+}
+
+function resolveEffectQueue(){
+  if(G_effectQueue.length===0) return;
+  if(G_effectQueue.length>=2){
+    var choices=G_effectQueue.map(function(e){return {label:e.label,cls:''};});
+    showPopup('効果の解決順を選択',
+      '複数の効果が同時に誘発しました。どちらから解決しますか？',
+      choices,
+      function(idx){
+        var chosen=G_effectQueue.splice(idx,1)[0];
+        G_effectQueue.unshift(chosen);
+        executeNextEffect();
+      }
+    );
+    return;
+  }
+  executeNextEffect();
+}
+
+function executeNextEffect(){
+  if(G_effectQueue.length===0) return;
+  var entry=G_effectQueue.shift();
+  G_popupSourceUid=entry.cardUid;
+  render();
+  entry.fn(function(){
+    G_popupSourceUid=null;
+    render();
+    resolveEffectQueue();
+  });
+}
+
 function myEnteredEff(c, isSummon){
   if(c.type==='creature'){
     G.turnCreatureCount=(G.turnCreatureCount||0)+1;
   }
 
-  // step3: onSummon（召喚時のみ）を flashCard 付きで実行（バーンは冒頭で済み）
-  function step3(){
-    if(!isSummon) return;
+  var wasQueuing = G_effectQueue.length > 0;
+
+  // onEntered をキューに積む
+  var eff=CARD_EFFECTS[c.id];
+  if(eff&&eff.onEntered){
+    (function(card, effect){
+      queueEffect(
+        '「'+card.name+'」の出た時効果',
+        card.uid,
+        function(done){
+          flashCard(card.uid, function(){
+            render();
+            effect.onEntered(card, done);
+          });
+        }
+      );
+    })(c, eff);
+  }
+
+  // ティンパニ2体目チェックをキューに積む
+  if(c.type==='creature'&&G.turnCreatureCount===2&&c.id!=='tinpani'){
+    var tinpanis=G.myBattle.filter(function(x){return x.id==='tinpani';});
+    if(tinpanis.length>0){
+      (function(tp, cnt){
+        queueEffect(
+          '「'+tp.name+'」の誘発効果（'+cnt+'体目）',
+          tp.uid,
+          function(done){
+            flashCard(tp.uid, function(){
+              showPopup('ティンパニ=シンバリー',
+                '自分の'+cnt+'体目のクリーチャーが出た！\nティンパニを破壊してもよい。\nそうしたら相手はクリーチャー1体を選び破壊する。',
+                [{label:'⚡ ティンパニを自壊させる',cls:'yes'},{label:'✋ 発動しない',cls:'no'}],
+                function(ti){
+                  if(ti===1){log('w','💠 ティンパニ：発動しない');done();return;}
+                  G.myBattle=G.myBattle.filter(function(x){return x.uid!==tp.uid;});G.grave.push(tp);
+                  log('w','💠 ティンパニ：自壊！相手はクリーチャーを1体選んで破壊する');
+                  if(G.oppBattle.length>0){
+                    showCardSelectPopup('ティンパニ効果','相手はクリーチャーを1体選んで破壊する。',G.oppBattle,function(sel){
+                      if(!sel){done();return;}
+                      G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==sel.uid;});G.oppGrave.push(sel);
+                      log('l','💀 ティンパニ効果：「'+sel.name+'」破壊！');render();
+                      done();
+                    });
+                  } else {
+                    done();
+                  }
+                  render();
+                }
+              );
+            });
+          }
+        );
+      })(tinpanis[0], G.turnCreatureCount);
+    }
+  }
+
+  // onSummon（ヨビニオン等）をキューに積む
+  if(isSummon){
     var effS=CARD_EFFECTS[c.id];
-    if(!(effS&&effS.onSummon)) return;
-    G_popupSourceUid=c.uid;
-    render();
-    flashCard(c.uid, function(){
-      render();
-      effS.onSummon(c);
-      G_popupSourceUid=null;
-    });
-  }
-
-  function step2(){
-    // ティンパニ：2体目トリガー
-    if(c.type==='creature'&&G.turnCreatureCount===2&&c.id!=='tinpani'){
-      var tinpanis=G.myBattle.filter(function(x){return x.id==='tinpani';});
-      if(tinpanis.length>0){
-        var tp=tinpanis[0];
-        G_popupSourceUid=tp.uid;
-        render();
-        flashCard(tp.uid, function(){
-          showPopup('ティンパニ=シンバリー',
-            '自分の'+G.turnCreatureCount+'体目のクリーチャーが出た！\nティンパニを破壊してもよい。\nそうしたら相手はクリーチャー1体を選び破壊する。',
-            [{label:'⚡ ティンパニを自壊させる',cls:'yes'},{label:'✋ 発動しない',cls:'no'}],
-            function(ti){
-              if(ti===1){log('w','💠 ティンパニ：発動しない');step3();return;}
-              G.myBattle=G.myBattle.filter(function(x){return x.uid!==tp.uid;});G.grave.push(tp);
-              log('w','💠 ティンパニ：自壊！相手はクリーチャーを1体選んで破壊する');
-              if(G.oppBattle.length>0){
-                showCardSelectPopup('ティンパニ効果','相手はクリーチャーを1体選んで破壊する。',G.oppBattle,function(sel){
-                  if(!sel){step3();return;}
-                  G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==sel.uid;});G.oppGrave.push(sel);
-                  log('l','💀 ティンパニ効果：「'+sel.name+'」破壊！');render();
-                  step3();
-                });
-              } else {
-                step3();
-              }
+    if(effS&&effS.onSummon){
+      (function(card, es){
+        queueEffect(
+          '「'+card.name+'」の召喚時効果',
+          card.uid,
+          function(done){
+            flashCard(card.uid, function(){
               render();
-            }
-          );
-        });
-        return; // step3はティンパニコールバック内で呼ぶ
-      }
-    }
-    // 出た時効果（onEntered）
-    var eff=CARD_EFFECTS[c.id];
-    if(eff&&eff.onEntered){
-      G_popupSourceUid=c.uid;
-      render();
-      flashCard(c.uid, function(){
-        render();
-        eff.onEntered(c);
-        G_popupSourceUid=null;
-        step3();
-      });
-    } else {
-      G_popupSourceUid=null;
-      step3();
+              es.onSummon(card, done);
+            });
+          }
+        );
+      })(c, effS);
     }
   }
 
-  // バーンエフェクト → step2（クリーチャー=黄金、呪文/その他=青紫）
-  summonFx(c, step2, c.type==='creature' ? 'creature' : 'spell');
+  // バーンエフェクト後にキュー解決（処理中でなければ）
+  summonFx(c, function(){
+    if(!wasQueuing) resolveEffectQueue();
+  }, c.type==='creature' ? 'creature' : 'spell');
 }
-
 function mySummonEff(c){
   // 統合済み。myEnteredEff(c, true) で onSummon まで処理される
 }
@@ -2906,7 +3003,7 @@ function renderBZ(id,cards,mine){
     }
     wrap.appendChild(d);
     var badges=mkBadges(c,mine);
-    if(badges) d.appendChild(badges);
+    if(badges) wrap.appendChild(badges);
     // 自分バトルゾーン・攻撃フェーズのみアタックボタンを表示
     if(mine && G.phase===4){
       var canAtk=canCardAttack(c);
