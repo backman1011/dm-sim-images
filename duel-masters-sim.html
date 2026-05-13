@@ -206,7 +206,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .card:hover{transform:translateY(-8px) scale(1.1);z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.7);}
 .card.sel{box-shadow:0 0 0 2px var(--gold),0 8px 24px rgba(255,204,0,.5);transform:translateY(-10px) scale(1.12);z-index:40;}
 .card.effing{box-shadow:0 0 0 2px #ffcc00,0 0 16px rgba(255,204,0,.6);animation:effingPulse 0.8s ease-in-out infinite alternate;}
-.card-badges{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin-top:2px;min-height:14px;}
+.card-badges{display:flex;gap:2px;justify-content:flex-start;flex-wrap:wrap;margin-top:2px;min-height:14px;}
 .badge{font-size:.42rem;font-weight:900;padding:1px 3px;border-radius:3px;line-height:1.4;letter-spacing:.02em;}
 .badge-sick{background:rgba(60,60,60,.75);color:#888;border:1px solid #555;}
 .badge-mf{background:rgba(80,220,160,.85);color:#000;}
@@ -1563,11 +1563,11 @@ var CARD_EFFECTS = {
   maardan: {
     onEntered: function(c){
       var crs=G.oppHand.filter(function(x){return x.type==='creature';});
-      if(crs.length===0){log('w','🌑 マーダン：相手手札にクリーチャーなし');return;}
+      if(crs.length===0){log('w','🌑 マーダン：相手手札にクリーチャーなし');G_popupSourceUid=null;return;}
       if(G.oppHand.length===1&&crs.length===1){
         G.oppHand=G.oppHand.filter(function(x){return x.uid!==crs[0].uid;});
         G.oppGrave.push(crs[0]);
-        log('w','🌑 マーダン：「'+crs[0].name+'」を捨てさせた');return;
+        log('w','🌑 マーダン：「'+crs[0].name+'」を捨てさせた');G_popupSourceUid=null;return;
       }
       var allHand=G.oppHand.map(function(x){return Object.assign({},x,{_disabled:x.type!=='creature'});});
       showCardSelectPopup('深淵の壊炉 マーダン=ロウ',
@@ -1874,6 +1874,8 @@ function myEnteredEff(c){
     G_popupSourceUid=c.uid;
     eff.onEntered(c);
     if(!G_popupWaiting) G_popupSourceUid=null;
+  } else {
+    G_popupSourceUid=null;
   }
 }
 
@@ -2679,7 +2681,7 @@ function mkCard(c,clickable){
   var isMFcard=hasAbility(c,'マッハファイター');
   var isSAcard=hasAbility(c,'スピードアタッカー');
   var isSick=c.summoned&&!isMFcard&&!isSAcard&&!c.abyssRush;
-  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(isSick?' sick':'')+(c.sealed?' sealed':'')+(!c._inBZ&&G.sel===c.uid?' sel':'')+(G_popupSourceUid===c.uid?' effing':'');
+  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(isSick?' sick':'')+(c.sealed?' sealed':'')+(!c._inBZ&&G.sel===c.uid?' sel':'')+(G_popupWaiting&&G_popupSourceUid===c.uid?' effing':'');
   var d=document.createElement('div');
   d.className=cls;
 
