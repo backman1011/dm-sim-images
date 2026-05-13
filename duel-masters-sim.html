@@ -225,7 +225,27 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .card{width:52px;height:72px;border-radius:7px;border:2px solid;padding:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;cursor:pointer;transition:transform .16s,box-shadow .16s;position:relative;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,.6);}
 .card:hover{transform:translateY(-8px) scale(1.1);z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.7);}
 .card.sel{box-shadow:0 0 0 2px var(--gold),0 8px 24px rgba(255,204,0,.5);transform:translateY(-10px) scale(1.12);z-index:40;}
-.card.effing{box-shadow:0 0 0 2px #ffcc00,0 0 16px rgba(255,204,0,.6);animation:effingPulse 0.8s ease-in-out infinite alternate;}
+.bz-wrap{position:relative;z-index:1;isolation:isolate;}
+.bz-wrap:has(.card:hover){z-index:35;}
+.bz-wrap:has(.card.sel){z-index:45;}
+/* 常在型能力バッジ */
+.permanent-badge{
+  position:absolute;
+  bottom:-6px;
+  left:50%;
+  transform:translateX(-50%);
+  font-size:.65rem;
+  font-weight:900;
+  line-height:1;
+  z-index:50;
+  pointer-events:none;
+  background:#ffcc00;
+  color:#000;
+  border-radius:3px;
+  padding:1px 5px;
+  letter-spacing:.02em;
+  box-shadow:0 0 6px rgba(255,204,0,.7);
+}
 .card.flash-once{animation:flashOnce 1.0s ease-out forwards;}
 @keyframes flashOnce{
   0%  {box-shadow:0 0 0 2px #fff,0 0 8px rgba(255,255,255,.4);filter:brightness(1);}
@@ -242,7 +262,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
   0%  {width:10px;height:10px;transform:translate(-50%,-50%) scale(0);opacity:1;}
   100%{width:10px;height:10px;transform:translate(-50%,-50%) scale(8);opacity:0;}
 }
-.card-badges{display:flex;gap:2px;justify-content:flex-start;flex-wrap:wrap;margin-top:2px;min-height:14px;}
+.card-badges{display:flex;gap:2px;justify-content:flex-start;flex-wrap:wrap;position:absolute;bottom:-18px;left:0;min-height:14px;}
 .badge{font-size:.42rem;font-weight:900;padding:1px 3px;border-radius:3px;line-height:1.4;letter-spacing:.02em;}
 .badge-sick{background:rgba(60,60,60,.75);color:#888;border:1px solid #555;}
 .badge-mf{background:rgba(80,220,160,.85);color:#000;}
@@ -250,7 +270,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .badge-ar{background:rgba(160,80,220,.85);color:#fff;}
 .badge-blocker{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:#111;border-radius:3px;border:1px solid #444;position:relative;}
 .badge-blocker::after{content:'';display:block;width:7px;height:7px;border-radius:50%;background:#4499ff;box-shadow:0 0 4px #4499ff;}
-@keyframes effingPulse{from{box-shadow:0 0 0 2px #ffcc00,0 0 8px rgba(255,204,0,.4);}to{box-shadow:0 0 0 3px #ffee44,0 0 24px rgba(255,238,68,.8);}}
+
 /* 召喚エフェクト：カード画像が前面にバーンと出る */
 #summon-fx{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:9999;}
 #summon-fx.active{animation:summonFxAnim 0.9s ease-out forwards;}
@@ -277,7 +297,27 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .card.tap.sel{transform:rotate(18deg) translateY(-4px) scale(1.06);}
 .card.sealed{opacity:.3;filter:grayscale(.9);}
 .card.sealed::before{content:'🔒';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.2rem;z-index:2;}
-.card.sick{opacity:.42;filter:brightness(.65);}
+/* 召喚酔いヒヨコ演出 */
+.chick-orbit{
+  position:absolute;
+  top:50%;left:50%;
+  width:0;height:0;
+  pointer-events:none;
+  z-index:20;
+}
+.chick{
+  position:absolute;
+  font-size:.8rem;
+  line-height:1;
+  top:-6px;left:-6px;
+  transform-origin:6px 6px;
+  animation:chickOrbit 1.6s linear infinite;
+}
+.chick:nth-child(2){animation-delay:-0.8s;}
+@keyframes chickOrbit{
+  from{transform:rotate(0deg)   translateY(-20px);}
+  to  {transform:rotate(-360deg) translateY(-20px);}
+}
 .cn{background:linear-gradient(160deg,#0d2210,#193219);border-color:#2a7a2a;box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.05);}
 .cd{background:linear-gradient(160deg,#10071e,#1e0e34);border-color:#6622aa;box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.05);}
 .cl{background:linear-gradient(160deg,#1e1e0e,#2a2a16);border-color:#aaaa22;box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.05);}
@@ -678,6 +718,52 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
    type: 'add'=緑 / 'fix'=赤 / 'chg'=青
 */
 var VERSION_LOG = [
+  {
+    ver: 'v1.3.2', date: '2025-05-14',
+    logs: [
+      {type:'add', text:'召喚酔いカードにヒヨコ🐥2匹が周回する演出を追加'},
+      {type:'fix', text:'ヒヨコの回転中心・位置ずれを修正'},
+      {type:'chg', text:'召喚酔い中のカードの暗転エフェクトを廃止'},
+    ]
+  },
+  {
+    ver: 'v1.3.2', date: '2025-05-14',
+    logs: [
+      {type:'add', text:'召喚酔いカードにヒヨコ🐥2匹が周回する演出を追加'},
+      {type:'fix', text:'ヒヨコの回転中心がカード中央にならない問題を修正'},
+    ]
+  },
+  {
+    ver: 'v1.3.1', date: '2025-05-14',
+    logs: [
+      {type:'chg', text:'常在型能力エフェクトを光輪 → カード中央下部の⚡点滅バッジに変更'},
+    ]
+  },
+  {
+    ver: 'v1.3.1', date: '2025-05-14',
+    logs: [
+      {type:'fix', text:'常在型能力の光輪エフェクトが表示されない問題を修正'},
+      {type:'chg', text:'CARD_EFFECTSにpermanentフラグを追加し常在型判定を汎用化'},
+    ]
+  },
+  {
+    ver: 'v1.3.0', date: '2025-05-14',
+    logs: [
+      {type:'chg', text:'常在型能力エフェクトをパルス点滅 → 回転光輪（オーラ）に変更'},
+    ]
+  },
+  {
+    ver: 'v1.2.2', date: '2025-05-14',
+    logs: [
+      {type:'fix', text:'誘発型能力のないカード（フットレス・テレスコ等）召喚時に点滅エフェクトが出る問題を修正'},
+    ]
+  },
+  {
+    ver: 'v1.2.1', date: '2025-05-14',
+    logs: [
+      {type:'fix', text:'マーダンロウ・フットレス召喚後に点滅エフェクトが消えない問題を修正'},
+    ]
+  },
   {
     ver: 'v1.2.0', date: '2025-05-13',
     logs: [
@@ -1751,13 +1837,11 @@ var CARD_EFFECTS = {
 
   /* ────── フットレス＝トレース ────── */
   footless: {
-    onEntered: function(c){log('w','🌑 フットレス：場に出た（ターン終了時に墓地肥やし＋回収）');},
     onSpell:  function(c){log('w','🌑 力が欲しいか？：アビス・メクレイド5！');execMekleido5(true);}
   },
 
   /* ────── テレスコ=テレス ────── */
   teresu: {
-    onEntered: function(c){log('w','🌑 テレス：場に出た（相手ターン開始時にハンデス発動）');},
     onOppSummon: function(c){log('l','相手テレス：次の相手ターン開始時からハンデス発動');}
   },
 
@@ -1914,7 +1998,7 @@ var CARD_EFFECTS = {
   },
 
   /* ────── アビスベル=覇=ロード（召喚時効果なし、ターン終了時はendTurnで処理） ────── */
-  abyssbell: {},
+  abyssbell: {permanent: true},
 
   /* ────── フェアリー･Re:ライフ ────── */
   fairy_life: {
@@ -2022,7 +2106,7 @@ function myEnteredEff(c, isSummon){
     flashCard(c.uid, function(){
       render();
       effS.onSummon(c);
-      if(!G_popupWaiting) G_popupSourceUid=null;
+      G_popupSourceUid=null;
     });
   }
 
@@ -2067,7 +2151,7 @@ function myEnteredEff(c, isSummon){
       flashCard(c.uid, function(){
         render();
         eff.onEntered(c);
-        if(!G_popupWaiting) G_popupSourceUid=null;
+        G_popupSourceUid=null;
         step3();
       });
     } else {
@@ -2092,7 +2176,7 @@ function spellEff(c,isMe){
     if(eff&&eff.onSpell){
       G_popupSourceUid=c.uid;
       eff.onSpell(c);
-      if(!G_popupWaiting) G_popupSourceUid=null;
+      G_popupSourceUid=null;
     }
     render();
   }, 'spell');
@@ -2787,7 +2871,7 @@ function mkBadges(c, mine){
   if(c.summoned){
     if(isMF)       badges.push({cls:'badge-mf',  text:'MF'});
     else if(isSA)  badges.push({cls:'badge-sa',  text:'SA'});
-    else           badges.push({cls:'badge-sick', text:'酔'});
+    // 召喚酔いはヒヨコ演出で表示するためバッジ不要
   }
   if(c.abyssRush)  badges.push({cls:'badge-ar',  text:'AR'});
   if(hasAbility(c,'ブロッカー')&&!c.tapped&&!c.sealed) badges.push({cls:'badge-blocker', text:''});
@@ -2810,11 +2894,19 @@ function renderBZ(id,cards,mine){
     c._inBZ=true; // バトルゾーンのカードはクリック選択不要
     // カード+バッジのラッパー
     var wrap=document.createElement('div');
-    wrap.style.cssText='display:inline-flex;flex-direction:column;align-items:flex-start;';
+    wrap.style.cssText='display:inline-flex;flex-direction:column;align-items:flex-start;position:relative;';
+    wrap.className='bz-wrap';
     var d=mkCard(c,mine);
+    // 常在型能力持ちカードにバッジを表示（カードと一緒に浮き上がるようcard直下に追加）
+    if(mine && CARD_EFFECTS[c.id] && CARD_EFFECTS[c.id].permanent){
+      var pb=document.createElement('span');
+      pb.className='permanent-badge';
+      pb.textContent='！';
+      d.appendChild(pb);
+    }
     wrap.appendChild(d);
     var badges=mkBadges(c,mine);
-    if(badges) wrap.appendChild(badges);
+    if(badges) d.appendChild(badges);
     // 自分バトルゾーン・攻撃フェーズのみアタックボタンを表示
     if(mine && G.phase===4){
       var canAtk=canCardAttack(c);
@@ -2889,18 +2981,38 @@ function mkCard(c,clickable){
   var isMFcard=hasAbility(c,'マッハファイター');
   var isSAcard=hasAbility(c,'スピードアタッカー');
   var isSick=c.summoned&&!isMFcard&&!isSAcard&&!c.abyssRush;
-  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(isSick?' sick':'')+(c.sealed?' sealed':'')+(!c._inBZ&&G.sel===c.uid?' sel':'')+(G_popupSourceUid===c.uid?' effing':'');
+  var isEffing = G_popupSourceUid===c.uid;
+  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(isSick?' sick':'')+(c.sealed?' sealed':'')+(!c._inBZ&&G.sel===c.uid?' sel':'')+(isEffing?' effing':'');
   var d=document.createElement('div');
   d.className=cls;
   d.dataset.uid=c.uid;
+  // 召喚酔いヒヨコ演出
+  if(isSick){
+    var orbit=document.createElement('div');
+    orbit.className='chick-orbit';
+    var ck1=document.createElement('span');ck1.className='chick';ck1.textContent='🐤';
+    var ck2=document.createElement('span');ck2.className='chick';ck2.textContent='🐤';
+    orbit.appendChild(ck1);orbit.appendChild(ck2);
+    d.appendChild(orbit);
+  }
+
   // カード画像がある場合は画像表示、なければテキスト表示
   if(CARD_IMAGES[c.id]){
     d.style.padding='0';
-    d.style.overflow='hidden';
+    d.style.overflow='visible';
     d.innerHTML=
       '<span class="ccost">'+c.cost+'</span>'+
       '<img src="'+CARD_IMAGES[c.id]+'" style="width:100%;height:100%;object-fit:cover;border-radius:4px;display:block;">'+
       '<div class="cpow" style="position:absolute;bottom:2px;right:2px;">'+(c.pow>0?c.pow:'呪文')+'</div>';
+    // innerHTML上書き後にヒヨコを再追加
+    if(isSick){
+      var orbit2=document.createElement('div');
+      orbit2.className='chick-orbit';
+      var ck3=document.createElement('span');ck3.className='chick';ck3.textContent='🐤';
+      var ck4=document.createElement('span');ck4.className='chick';ck4.textContent='🐤';
+      orbit2.appendChild(ck3);orbit2.appendChild(ck4);
+      d.appendChild(orbit2);
+    }
   } else {
     // 多色カードのアイコンは緑と黒を縦並びで表示
     var icoHtml;
