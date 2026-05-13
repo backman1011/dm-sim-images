@@ -159,8 +159,8 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .mc.mt{transform:rotate(90deg);opacity:.65;}
 .mc-tap-overlay{position:absolute;inset:0;background:rgba(0,0,0,.4);border-radius:2px;}
 .phase-label{font-size:.6rem;font-weight:700;color:rgba(255,255,255,.75);letter-spacing:.06em;white-space:nowrap;text-align:center;min-width:60px;}
-.grave-btn{padding:2px 5px;border-radius:5px;border:1px solid rgba(255,100,100,.4);background:rgba(255,80,80,.08);color:rgba(255,150,150,.8);font-size:.5rem;cursor:pointer;flex-shrink:0;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:1px;}
-.grave-btn span{font-size:.48rem;font-weight:700;color:rgba(255,180,180,.9);}
+.grave-btn{padding:4px 7px;border-radius:6px;border:1px solid rgba(255,100,100,.4);background:rgba(255,80,80,.08);color:rgba(255,150,150,.8);font-size:.65rem;cursor:pointer;flex-shrink:0;transition:all .15s;display:flex;flex-direction:column;align-items:center;gap:1px;margin-left:8px;}
+.grave-btn span{font-size:.58rem;font-weight:700;color:rgba(255,180,180,.9);}
 .grave-btn:hover{background:rgba(255,80,80,.2);border-color:rgba(255,120,120,.7);}
 
 /* ターン終了ボタン（センターライン内） */
@@ -329,12 +329,16 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
   opacity:.35;
   box-shadow:none;
 }
-.deck-cnt{
-  font-size:.5rem;font-weight:700;
-  color:rgba(255,255,255,.5);
+.deck-num{
+  position:absolute;
+  bottom:3px;left:0;right:0;
+  text-align:center;
+  font-size:.55rem;font-weight:900;
+  color:rgba(255,255,255,.7);
   letter-spacing:.03em;
+  text-shadow:0 1px 3px rgba(0,0,0,.9);
 }
-.deck-card.thick-0 + .deck-cnt{color:rgba(255,100,100,.5);}
+.deck-card.thick-0 .deck-num{color:rgba(255,100,100,.6);}
 /* 召喚酔いヒヨコ演出 */
 .chick-orbit{
   position:absolute;
@@ -592,10 +596,9 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 
       <!-- 相手シールド＋墓地ボタン -->
       <div class="field-row row-oshield">
-        <button class="grave-btn opp-grave" onclick="showGraveModal('opp')">🪦<span id="ogcnt">0</span></button>
         <div class="shields" id="osh"></div>
-        <span class="field-lbl">シールド <span id="osc">5</span></span>
-        <div class="deck-pile" id="opp-deck-pile"><div class="deck-card thick-3" id="opp-deck-card"></div><div class="deck-cnt"><span id="odcnt">40</span>枚</div></div>
+        <div class="deck-pile" id="opp-deck-pile"><div class="deck-card thick-3" id="opp-deck-card"><span class="deck-num" id="odcnt">40</span></div></div>
+        <button class="grave-btn opp-grave" onclick="showGraveModal('opp')">🪦<span id="ogcnt">0</span></button>
       </div>
 
       <!-- 相手バトルゾーン -->
@@ -619,10 +622,9 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 
       <!-- 自分シールド＋墓地ボタン -->
       <div class="field-row row-mshield">
-        <button class="grave-btn my-grave" onclick="showGraveModal('my')">🪦<span id="gcnt">0</span></button>
         <div class="shields" id="msh"></div>
-        <span class="field-lbl">シールド <span id="msc">5</span></span>
-        <div class="deck-pile" id="my-deck-pile"><div class="deck-card thick-3" id="my-deck-card"></div><div class="deck-cnt"><span id="dcnt">40</span>枚</div></div>
+        <div class="deck-pile" id="my-deck-pile"><div class="deck-card thick-3" id="my-deck-card"><span class="deck-num" id="dcnt">40</span></div></div>
+        <button class="grave-btn my-grave" onclick="showGraveModal('my')">🪦<span id="gcnt">0</span></button>
       </div>
 
       <!-- 自分マナ（シールドの下） -->
@@ -2894,15 +2896,26 @@ function render(){
   renderSh('msh',G.myShields); renderSh('osh',G.oppShields);
   var msc=0; for(var i=0;i<G.myShields.length;i++) if(G.myShields[i].intact) msc++;
   var osc=0; for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) osc++;
-  document.getElementById('msc').textContent=msc;
-  document.getElementById('osc').textContent=osc;
+  var _msc=document.getElementById('msc');if(_msc)_msc.textContent=msc;
+  var _osc=document.getElementById('osc');if(_osc)_osc.textContent=osc;
   // 相手手札：枚数のみ更新
   var ohcnt=document.getElementById('ohcnt'); if(ohcnt) ohcnt.textContent=G.oppHand.length;
   renderBZ('mbz',G.myBattle,true); renderBZ('obz',G.oppBattle,false);
   renderMana(); renderHand();
-  var _dcnt=document.getElementById('dcnt');if(_dcnt)_dcnt.textContent=G.myDeck.length;
-  document.getElementById('gcnt').textContent=G.grave.length;
+  // 山札枚数・厚み更新
+  var _mdc=document.getElementById('my-deck-card');
+  if(_mdc){
+    var mc=G.myDeck.length;
+    _mdc.className='deck-card '+(mc===0?'thick-0':mc<=5?'thick-1':mc<=29?'thick-2':'thick-3');
+  }
+  var _mdcnt=document.getElementById('dcnt');if(_mdcnt)_mdcnt.textContent=G.myDeck.length;
+  var _odc=document.getElementById('opp-deck-card');
+  if(_odc){
+    var oc=G.oppDeck.length;
+    _odc.className='deck-card '+(oc===0?'thick-0':oc<=5?'thick-1':oc<=29?'thick-2':'thick-3');
+  }
   var _odcnt=document.getElementById('odcnt');if(_odcnt)_odcnt.textContent=G.oppDeck.length;
+  document.getElementById('gcnt').textContent=G.grave.length;
   var ogcnt=document.getElementById('ogcnt'); if(ogcnt) ogcnt.textContent=G.oppGrave?G.oppGrave.length:0;
   // 相手マナ描画
   renderOppMana();
