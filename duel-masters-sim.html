@@ -205,6 +205,16 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .card{width:52px;height:72px;border-radius:7px;border:2px solid;padding:2px;display:flex;flex-direction:column;align-items:center;justify-content:space-between;cursor:pointer;transition:transform .16s,box-shadow .16s;position:relative;flex-shrink:0;box-shadow:0 3px 8px rgba(0,0,0,.6);}
 .card:hover{transform:translateY(-8px) scale(1.1);z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.7);}
 .card.sel{box-shadow:0 0 0 2px var(--gold),0 8px 24px rgba(255,204,0,.5);transform:translateY(-10px) scale(1.12);z-index:40;}
+.card.effing{box-shadow:0 0 0 2px #ffcc00,0 0 16px rgba(255,204,0,.6);animation:effingPulse 0.8s ease-in-out infinite alternate;}
+.card-badges{display:flex;gap:2px;justify-content:center;flex-wrap:wrap;margin-top:2px;min-height:14px;}
+.badge{font-size:.42rem;font-weight:900;padding:1px 3px;border-radius:3px;line-height:1.4;letter-spacing:.02em;}
+.badge-sick{background:rgba(60,60,60,.75);color:#888;border:1px solid #555;}
+.badge-mf{background:rgba(80,220,160,.85);color:#000;}
+.badge-sa{background:rgba(255,80,80,.85);color:#fff;}
+.badge-ar{background:rgba(160,80,220,.85);color:#fff;}
+.badge-blocker{display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;background:#111;border-radius:3px;border:1px solid #444;position:relative;}
+.badge-blocker::after{content:'';display:block;width:7px;height:7px;border-radius:50%;background:#4499ff;box-shadow:0 0 4px #4499ff;}
+@keyframes effingPulse{from{box-shadow:0 0 0 2px #ffcc00,0 0 8px rgba(255,204,0,.4);}to{box-shadow:0 0 0 3px #ffee44,0 0 24px rgba(255,238,68,.8);}}
 .card.tap{transform:rotate(18deg);}
 .card.tap.sel{transform:rotate(18deg) translateY(-4px) scale(1.06);}
 .card.sealed{opacity:.3;filter:grayscale(.9);}
@@ -923,7 +933,7 @@ function runPhase(){
   }
   if(p===2){setPhase('チャージ');setPBtn('スキップ▶');log('s','チャージ：手札からマナに1枚置けます');render();return;}
   if(p===3){setPhase('メイン');setPBtn('攻撃へ▶');log('s','メイン：召喚・呪文が使えます');render();return;}
-  if(p===4){setPhase('攻撃');setPBtn('ターン終了▶');log('s','攻撃：クリーチャーで攻撃できます');render();return;}
+  if(p===4){setPhase('攻撃');setPBtn('ターン終了▶');log('s','攻撃：クリーチャーで攻撃できます');G.sel=null;render();updateBtns();return;}
 }
 function endTurn(){
   if(G.over) return;
@@ -1118,9 +1128,48 @@ function oppAttackLoop(){
 }
 function oppAtk(atk){
   var tappedMine=G.myBattle.filter(function(x){return x.tapped;});
-  // タップクリーチャーへの攻撃とシールド攻撃をランダムに選択（シールドへはいつでも可）
-  if(tappedMine.length>0&&Math.random()>.4){
-    var def=tappedMine[Math.floor(Math.random()*tappedMine.length)];
+  // タップクリーチャーへの攻撃とシールド攻撃をランダムに選択
+  var attackTarget = (tappedMine.length>0&&Math.random()>.4) ? 'creature' : 'player';
+  var def = attackTarget==='creature' ? tappedMine[Math.floor(Math.random()*tappedMine.length)] : null;
+
+  // ブロッカーチェック（自分のアンタップブロッカー）
+  var isUnblockable = atk.eff && atk.eff.indexOf('ブロックされない')!==-1;
+  var myBlockers = G.myBattle.filter(function(x){
+    return !x.tapped && !x.sealed && hasAbility(x,'ブロッカー');
+  });
+
+  if(!isUnblockable && myBlockers.length>0){
+    // ブロックポップアップを表示
+    var blockOpts = myBlockers.map(function(b){
+      return {label:'🛡 「'+b.name+'」（P:'+b.pow+'）でブロック', cls:''};
+    });
+    blockOpts.push({label:'✋ ブロックしない', cls:'no'});
+
+    var attackDesc = attackTarget==='creature'
+      ? '相手「'+atk.name+'」('+atk.pow+') が「'+def.name+'」に攻撃！'
+      : '相手「'+atk.name+'」('+atk.pow+') がプレイヤーに攻撃！';
+
+    showPopup('ブロックしますか？', attackDesc, blockOpts, function(bidx){
+      if(bidx===blockOpts.length-1){
+        // ブロックしない→通常処理
+        log('l', attackDesc+' ブロックせず');
+        oppAtkResolve(atk, attackTarget, def);
+      } else {
+        var blocker = myBlockers[bidx];
+        log('l','🛡「'+blocker.name+'」がブロック！');
+        blocker.tapped=true;
+        battle(atk, blocker, false);
+        render(); updateBtns();
+      }
+    });
+    return;
+  }
+
+  oppAtkResolve(atk, attackTarget, def);
+}
+
+function oppAtkResolve(atk, attackTarget, def){
+  if(attackTarget==='creature' && def){
     log('l','相手「'+atk.name+'」('+atk.pow+') → 「'+def.name+'」('+def.pow+') [タップ]');
     battle(atk,def,false);
   } else {
@@ -1792,6 +1841,7 @@ function mySummonEff(c){
     var tinpanis=G.myBattle.filter(function(x){return x.id==='tinpani';});
     if(tinpanis.length>0){
       var tp=tinpanis[0];
+      G_popupSourceUid=tp.uid; // ティンパニの誘発
       showPopup('ティンパニ=シンバリー',
         '自分の'+G.turnCreatureCount+'体目のクリーチャーが出た！\nティンパニを破壊してもよい。\nそうしたら相手はクリーチャー1体を選び破壊する。',
         [{label:'⚡ ティンパニを自壊させる',cls:'yes'},{label:'✋ 発動しない',cls:'no'}],
@@ -1812,13 +1862,19 @@ function mySummonEff(c){
     }
   }
   var eff=CARD_EFFECTS[c.id];
-  if(eff&&eff.onSummon) eff.onSummon(c);
+  if(eff&&eff.onSummon){
+    G_popupSourceUid=c.uid; // 出た時誘発
+    eff.onSummon(c);
+  }
 }
 
 function spellEff(c,isMe){
   if(!isMe){render();return;}
   var eff=CARD_EFFECTS[c.id];
-  if(eff&&eff.onSpell) eff.onSpell(c);
+  if(eff&&eff.onSpell){
+    G_popupSourceUid=c.uid; // 呪文効果発動
+    eff.onSpell(c);
+  }
   render();
 }
 
@@ -2111,6 +2167,7 @@ function confirmEffPopup(){
   G_effPopupCallback=null;
   G_effPopupSelected=null;
   cb(sel);
+  G_popupSourceUid=null;
   render(); updateBtns();
 }
 
@@ -2195,6 +2252,30 @@ function doAttack(){
 
 function execAttack(c,target){
   c.tapped=true;
+  G_popupSourceUid=c.uid; // アタック中のカードを点滅表示
+
+  // ブロッカーチェック（相手のアンタップブロッカーがいればブロック可能）
+  var canBeBlocked = target.type==='creature' || target.type==='player';
+  var isUnblockable = c.eff && c.eff.indexOf('ブロックされない')!==-1;
+  var oppBlockers = G.oppBattle.filter(function(x){
+    return !x.tapped && !x.sealed && hasAbility(x,'ブロッカー');
+  });
+
+  if(canBeBlocked && !isUnblockable && oppBlockers.length>0){
+    // 相手AIがブロックするか判定（パワーで勝てる or 相打ちならブロック）
+    var willBlock = oppBlockers.filter(function(b){
+      return b.pow >= c.pow;
+    });
+    if(willBlock.length>0){
+      var blocker = willBlock[0];
+      log('l','🛡 相手「'+blocker.name+'」がブロック！');
+      blocker.tapped=true;
+      battle(c, blocker, true);
+      G.sel=null; render(); updateBtns();
+      return;
+    }
+  }
+
   if(target.type==='creature'){
     var t=null; for(var i=0;i<G.oppBattle.length;i++) if(G.oppBattle[i].uid===target.uid){t=G.oppBattle[i];break;}
     if(!t){G.sel=null;render();updateBtns();return;}
@@ -2233,6 +2314,7 @@ function execAttack(c,target){
     log('a','🎉 ダイレクトアタック！'); fxFloat('ダイレクト！','#ff8844');
     endGame(true,c.name+'のダイレクトアタックで勝利！');
   }
+  G_popupSourceUid=null;
   G.sel=null; render(); updateBtns();
 }
 /* ══ ブレイク数計算（共通） ══
@@ -2472,13 +2554,43 @@ function shakeShield(id,idx){
   var shs=z.getElementsByClassName('sh');
   if(shs[idx]){shs[idx].className+=' sh-p';var s=shs[idx];setTimeout(function(){s.className=s.className.replace(' sh-p','');},500);}
 }
+function mkBadges(c, mine){
+  var badges=[];
+  if(c.type!=='creature') return null;
+  var isMF=hasAbility(c,'マッハファイター');
+  var isSA=hasAbility(c,'スピードアタッカー');
+  if(c.summoned){
+    if(isMF)       badges.push({cls:'badge-mf',  text:'MF'});
+    else if(isSA)  badges.push({cls:'badge-sa',  text:'SA'});
+    else           badges.push({cls:'badge-sick', text:'酔'});
+  }
+  if(c.abyssRush)  badges.push({cls:'badge-ar',  text:'AR'});
+  if(hasAbility(c,'ブロッカー')&&!c.tapped&&!c.sealed) badges.push({cls:'badge-blocker', text:''});
+  if(badges.length===0) return null;
+  var wrap=document.createElement('div');
+  wrap.className='card-badges';
+  badges.forEach(function(b){
+    var s=document.createElement('span');
+    s.className='badge '+b.cls;
+    s.textContent=b.text;
+    wrap.appendChild(s);
+  });
+  return wrap;
+}
+
 function renderBZ(id,cards,mine){
   var el=document.getElementById(id); el.innerHTML='';
   for(var i=0;i<cards.length;i++){
-    var d=mkCard(cards[i],mine);
+    var c=cards[i];
+    // カード+バッジのラッパー
+    var wrap=document.createElement('div');
+    wrap.style.cssText='display:inline-flex;flex-direction:column;align-items:center;';
+    var d=mkCard(c,mine);
+    wrap.appendChild(d);
+    var badges=mkBadges(c,mine);
+    if(badges) wrap.appendChild(badges);
     // 自分バトルゾーン・攻撃フェーズのみアタックボタンを表示
     if(mine && G.phase===4){
-      var c=cards[i];
       var canAtk=canCardAttack(c);
       if(canAtk){
         (function(card,cardEl){
@@ -2491,20 +2603,20 @@ function renderBZ(id,cards,mine){
         })(c,d);
       }
     }
-    el.appendChild(d);
+    el.appendChild(wrap);
   }
 }
 
 function canCardAttack(c){
   if(c.tapped||c.sealed) return false;
-  var hasAbyssbell=G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
-  var isMach=hasAbyssbell;
-  if(c.summoned&&!isMach) return false;
+  var isMach=hasAbility(c,'マッハファイター')&&c.summoned;
+  var isSA=hasAbility(c,'スピードアタッカー');
+  if(c.summoned&&!isMach&&!isSA) return false;
   if(c.summoned&&isMach&&G.oppBattle.length===0) return false;
-  // タップ相手 or シールド or ダイレクト があれば攻撃可
   var tappedEnemies=G.oppBattle.filter(function(x){return x.tapped;});
   var attackableEnemies=isMach?G.oppBattle:tappedEnemies;
-  return attackableEnemies.length>0||!c.summoned;
+  var canAttackShield=!c.summoned||(isSA&&!isMach);
+  return attackableEnemies.length>0||canAttackShield;
 }
 
 function showBZActionPopup(c, cardEl){
@@ -2544,8 +2656,8 @@ function mkCard(c,clickable){
   var cm={'n':'cn','d':'cd','m':'cm','l':'cl'};
   var isMFcard=hasAbility(c,'マッハファイター');
   var isSAcard=hasAbility(c,'スピードアタッカー');
-  var isSick=c.summoned&&!isMFcard&&!isSAcard;
-  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(isSick?' sick':'')+(c.sealed?' sealed':'')+(G.sel===c.uid?' sel':'');
+  var isSick=c.summoned&&!isMFcard&&!isSAcard&&!c.abyssRush;
+  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(isSick?' sick':'')+(c.sealed?' sealed':'')+(G.sel===c.uid?' sel':'')+(G_popupSourceUid===c.uid?' effing':'');
   var d=document.createElement('div');
   d.className=cls;
 
@@ -2557,13 +2669,6 @@ function mkCard(c,clickable){
       '<span class="ccost">'+c.cost+'</span>'+
       '<img src="'+CARD_IMAGES[c.id]+'" style="width:100%;height:100%;object-fit:cover;border-radius:4px;display:block;">'+
       '<div class="cpow" style="position:absolute;bottom:2px;right:2px;">'+(c.pow>0?c.pow:'呪文')+'</div>';
-    if(c.summoned){
-      var isMF=hasAbility(c,'マッハファイター');
-      var isSA2=hasAbility(c,'スピードアタッカー');
-      var badgeText= isMF ? 'MF' : (isSA2 ? 'SA' : '酔');
-      var badgeColor= isMF ? '#88ffcc' : '#ff8888';
-      d.innerHTML+='<div style="position:absolute;bottom:2px;left:2px;font-size:.42rem;color:'+badgeColor+';background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px;line-height:1.4;">'+badgeText+'</div>';
-    }
   } else {
     // 多色カードのアイコンは緑と黒を縦並びで表示
     var icoHtml;
@@ -2573,13 +2678,6 @@ function mkCard(c,clickable){
       icoHtml='<span class="cico">'+c.icon+'</span>';
     }
     d.innerHTML='<span class="ccost">'+c.cost+'</span>'+icoHtml+'<div class="cname">'+c.name+'</div><div class="cpow">'+(c.pow>0?(c.pow>=10000?Math.round(c.pow/1000)+'k':c.pow):'呪文')+'</div>';
-    if(c.summoned){
-      var isMF2=hasAbility(c,'マッハファイター');
-      var isSA3=hasAbility(c,'スピードアタッカー');
-      var badgeText2= isMF2 ? 'MF' : (isSA3 ? 'SA' : '酔');
-      var badgeColor2= isMF2 ? '#88ffcc' : '#ff8888';
-      d.innerHTML+='<div style="position:absolute;bottom:2px;left:2px;font-size:.42rem;color:'+badgeColor2+';background:rgba(0,0,0,.7);border-radius:2px;padding:0 2px;line-height:1.4;">'+badgeText2+'</div>';
-    }
   }
   if(clickable){
     (function(uid,card){
@@ -2892,6 +2990,7 @@ function bindDoubleTap(el, fn){
 
 var G_popupOnClose=null;
 var G_popupWaiting=false; // ポップアップ表示中はtrue、ゲーム進行をブロック
+var G_popupSourceUid=null; // 効果発動中のカードUID（黄色枠表示用）
 
 // ポップアップ待機中はタイマーをポーリングして待つ
 function safeTimeout(fn, delay){
