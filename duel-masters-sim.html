@@ -210,7 +210,6 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .card.sealed{opacity:.3;filter:grayscale(.9);}
 .card.sealed::before{content:'🔒';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.2rem;z-index:2;}
 .card.sick{opacity:.42;filter:brightness(.65);}
-.card.sick::after{content:'酔';position:absolute;bottom:2px;left:2px;font-size:.4rem;color:#ff8888;background:rgba(0,0,0,.7);border-radius:2px;padding:0 2px;line-height:1.4;}
 .cn{background:linear-gradient(160deg,#0d2210,#193219);border-color:#2a7a2a;box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.05);}
 .cd{background:linear-gradient(160deg,#10071e,#1e0e34);border-color:#6622aa;box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.05);}
 .cl{background:linear-gradient(160deg,#1e1e0e,#2a2a16);border-color:#aaaa22;box-shadow:0 3px 8px rgba(0,0,0,.6),inset 0 1px rgba(255,255,255,.05);}
@@ -1111,8 +1110,8 @@ function oppTurn(){
 }
 function oppAttackLoop(){
   if(G.over) return;
-  // 召喚酔いしていない・タップしていないクリーチャーのみ攻撃可
-  var atkers=G.oppBattle.filter(function(c){return !c.tapped&&!c.summoned&&!c.sealed;});
+  // 召喚酔いしていない・タップしていないクリーチャーのみ攻撃可（SAは召喚酔い無視）
+  var atkers=G.oppBattle.filter(function(c){return !c.tapped&&!c.sealed&&(!c.summoned||(c.eff&&c.eff.indexOf('スピードアタッカー')!==-1));});
   if(atkers.length===0){log('s','相手ターン終了 → あなたのターン');render();safeTimeout(function(){G.phase=0;runPhase();},350);return;}
   var atk=atkers[0]; atk.tapped=true; render();
   safeTimeout(function(){oppAtk(atk);render();safeTimeout(oppAttackLoop,450);},400);
@@ -1238,13 +1237,16 @@ function updateBtns(){
   }
   // 攻撃可否チェック
   var hasAbyssbell=G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
-  var isMachFighter=hasAbyssbell;
-  var baseCanAtk=inB&&!c.tapped&&G.phase===4&&(!c.summoned||isMachFighter);
+  // マッハファイター：出たターン(summoned=true)のみアンタップに攻撃可
+  var isMachFighter=(hasAbyssbell||(c.eff&&c.eff.indexOf('マッハファイター')!==-1))&&c.summoned;
+  var isSA=c.eff&&c.eff.indexOf('スピードアタッカー')!==-1;
+  var canMoveWithSick=isSA||isMachFighter;
+  var baseCanAtk=inB&&!c.tapped&&G.phase===4&&(!c.summoned||canMoveWithSick);
   var canAtk=false;
   if(baseCanAtk){
     var tappedEnemies=G.oppBattle.filter(function(x){return x.tapped;});
     var attackableEnemies=isMachFighter?G.oppBattle:tappedEnemies;
-    var canAttackShield=!c.summoned;
+    var canAttackShield=!c.summoned||(isSA&&!isMachFighter);
     canAtk=(attackableEnemies.length>0||canAttackShield);
   }
   var bAtk=document.getElementById('b-atk'); if(bAtk) bAtk.disabled=!canAtk;
@@ -2098,22 +2100,23 @@ function doAttack(){
   if(!c||c.tapped) return;
 
   var hasAbyssbell=G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
-  var hasMachFighter=hasAbyssbell;
+  // マッハファイター：出たターン(summoned=true)のみアンタップに攻撃可
+  var hasMachFighter=(hasAbyssbell||(c.eff&&c.eff.indexOf('マッハファイター')!==-1))&&c.summoned;
+  var hasSA=c.eff&&c.eff.indexOf('スピードアタッカー')!==-1;
 
   // 召喚酔いチェック
   if(c.summoned){
-    if(!hasMachFighter){log('l','⚠️「'+c.name+'」は召喚酔いのため攻撃できません');return;}
-    if(G.oppBattle.length===0){log('l','⚠️ マッハファイターはクリーチャーがいない場合シールドへ攻撃できません');return;}
+    if(!hasSA&&!hasMachFighter){log('l','⚠️「'+c.name+'」は召喚酔いのため攻撃できません');return;}
+    if(!hasSA&&hasMachFighter&&G.oppBattle.length===0){log('l','⚠️ マッハファイターはクリーチャーがいない場合シールドへ攻撃できません');return;}
   }
 
   // 攻撃先の選択肢を構築
   // タップしている相手クリーチャー（通常攻撃可能）
   var tappedEnemies=G.oppBattle.filter(function(x){return x.tapped;});
-  // マッハファイター時はアンタップも対象
+  // マッハファイター（出たターンのみ）はアンタップも対象
   var attackableEnemies=hasMachFighter ? G.oppBattle : tappedEnemies;
-  // シールドへの攻撃：召喚酔いなしなら常に可（クリーチャーがいても可）
-  var canAttackShield = !c.summoned;
-  // マッハファイターは召喚酔いでもクリーチャーへのみ可（シールドは不可）
+  // シールドへの攻撃：召喚酔いなし or SA → 可。マッハファイター中（召喚酔い中）は不可
+  var canAttackShield = !c.summoned || (hasSA && !hasMachFighter);
 
   // ブレイク数を判定
   var intactShieldsAll=[];
@@ -2478,7 +2481,12 @@ function showBZActionPopup(c, cardEl){
 }
 function mkCard(c,clickable){
   var cm={'n':'cn','d':'cd','m':'cm','l':'cl'};
-  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(c.summoned?' sick':'')+(c.sealed?' sealed':'')+(G.sel===c.uid?' sel':'');
+  var isMyCard=G.myBattle.filter(function(x){return x.uid===c.uid;}).length>0;
+  var hasAbyssbell4=isMyCard&&G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
+  var isMFcard=(hasAbyssbell4||(c.eff&&c.eff.indexOf('マッハファイター')!==-1));
+  var isSAcard=(c.eff&&c.eff.indexOf('スピードアタッカー')!==-1);
+  var isSick=c.summoned&&!isMFcard&&!isSAcard;
+  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(isSick?' sick':'')+(c.sealed?' sealed':'')+(G.sel===c.uid?' sel':'');
   var d=document.createElement('div');
   d.className=cls;
 
@@ -2490,7 +2498,14 @@ function mkCard(c,clickable){
       '<span class="ccost">'+c.cost+'</span>'+
       '<img src="'+CARD_IMAGES[c.id]+'" style="width:100%;height:100%;object-fit:cover;border-radius:4px;display:block;">'+
       '<div class="cpow" style="position:absolute;bottom:2px;right:2px;">'+(c.pow>0?c.pow:'呪文')+'</div>';
-    if(c.summoned) d.innerHTML+='<div style="position:absolute;bottom:2px;left:2px;font-size:.42rem;color:#ff8888;background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px;line-height:1.4;">酔</div>';
+    if(c.summoned){
+      var hasAbyssbell2=isMyCard&&G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
+      var isMF=(hasAbyssbell2||(c.eff&&c.eff.indexOf('マッハファイター')!==-1));
+      var isSA2=(c.eff&&c.eff.indexOf('スピードアタッカー')!==-1);
+      var badgeText= isMF ? 'MF' : (isSA2 ? 'SA' : '酔');
+      var badgeColor= isMF ? '#88ffcc' : '#ff8888';
+      d.innerHTML+='<div style="position:absolute;bottom:2px;left:2px;font-size:.42rem;color:'+badgeColor+';background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px;line-height:1.4;">'+badgeText+'</div>';
+    }
   } else {
     // 多色カードのアイコンは緑と黒を縦並びで表示
     var icoHtml;
@@ -2500,6 +2515,14 @@ function mkCard(c,clickable){
       icoHtml='<span class="cico">'+c.icon+'</span>';
     }
     d.innerHTML='<span class="ccost">'+c.cost+'</span>'+icoHtml+'<div class="cname">'+c.name+'</div><div class="cpow">'+(c.pow>0?(c.pow>=10000?Math.round(c.pow/1000)+'k':c.pow):'呪文')+'</div>';
+    if(c.summoned){
+      var hasAbyssbell3=isMyCard&&G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
+      var isMF2=(hasAbyssbell3||(c.eff&&c.eff.indexOf('マッハファイター')!==-1));
+      var isSA3=(c.eff&&c.eff.indexOf('スピードアタッカー')!==-1);
+      var badgeText2= isMF2 ? 'MF' : (isSA3 ? 'SA' : '酔');
+      var badgeColor2= isMF2 ? '#88ffcc' : '#ff8888';
+      d.innerHTML+='<div style="position:absolute;bottom:2px;left:2px;font-size:.42rem;color:'+badgeColor2+';background:rgba(0,0,0,.7);border-radius:2px;padding:0 2px;line-height:1.4;">'+badgeText2+'</div>';
+    }
   }
   if(clickable){
     (function(uid,card){
