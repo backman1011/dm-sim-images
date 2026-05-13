@@ -1018,13 +1018,13 @@ function endTurn(){
             G.grave=G.grave.filter(function(x){return x.uid!==p.uid;});
             G.myBattle.push({id:p.id,name:p.name,cost:p.cost,pow:p.pow,type:p.type,civ:p.civ,icon:p.icon,eff:p.eff,uid:nuid(),tapped:false,summoned:true});
             log('w','💠 アビスベル：「'+p.name+'」を墓地から召喚！');
-            mySummonEff(p);
+            myEnteredEff(p);
           } else {
             G.myMana.splice(sel.manaIdx,1);
             var d=sel._def;
             G.myBattle.push({id:d.id,name:d.name,cost:d.cost,pow:d.pow,type:d.type,civ:d.civ,icon:d.icon,eff:d.eff,uid:nuid(),tapped:false,summoned:true});
             log('w','💠 アビスベル：「'+d.name+'」をマナから召喚！');
-            mySummonEff(d);
+            myEnteredEff(d);
           }
           render();
         },
@@ -1304,7 +1304,7 @@ function doAbyssRushCard(sel){
   G.myBattle.push({id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:false,abyssRush:true,twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff});
   log('w','🌑 アビスラッシュ：「'+sel.name+'」を墓地から召喚！このターン攻撃可・ターン終了時山札の下へ');
   fxFloat('ラッシュ！','#ff6699');
-  mySummonEff(sel);
+  myEnteredEff(sel);
   render(); updateBtns();
 }
 function doGraveSpellCard(sel){
@@ -1336,7 +1336,7 @@ function doAbyssRush(){
       G.myBattle.push(bc);
       log('w','🌑 アビスラッシュ：「'+sel.name+'」を墓地から召喚！このターン攻撃可・ターン終了時山札の下へ');
       fxFloat('ラッシュ！','#ff6699');
-      mySummonEff(sel);
+      myEnteredEff(sel);
       render(); updateBtns();
     }
   );
@@ -1392,7 +1392,8 @@ function playCardDirect(c, asSpell, ec){
     G.myBattle.push({id:c.id,name:c.name,cost:c.cost,pow:c.pow,type:c.type,civ:c.civ,icon:c.icon,eff:c.eff,uid:c.uid,tapped:false,summoned:true,twin:c.twin,spellName:c.spellName,spellCost:c.spellCost,spellEff:c.spellEff});
     log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
     fxFloat('召喚！','#88ff88');
-    mySummonEff(c);
+    myEnteredEff(c); // 場に出た時の効果
+    mySummonEff(c);  // 召喚時のみの効果（ティンパニヨビニオン等）
   } else if(asSpell && c.twin){
     // ツインパクトの呪文面
     G.grave.push(Object.assign({},c,{usedAsSpell:true}));
@@ -1460,7 +1461,7 @@ function doSummon(){
         log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
         log('m','✨ '+c.eff);
         fxFloat('召喚！','#88ff88');
-        mySummonEff(c);
+        myEnteredEff(c);
       }
       G.sel=null; render(); updateBtns();
     });
@@ -1479,7 +1480,7 @@ function doSummon(){
     log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
     log('m','✨ '+c.eff);
     fxFloat('召喚！','#88ff88');
-    mySummonEff(c);
+    myEnteredEff(c);
   } else {
     G.grave.push(c);
     log('m','💫「'+c.name+'」発動！（コスト'+ec+'）');
@@ -1521,7 +1522,7 @@ var CARD_EFFECTS = {
 
   /* ────── ベラドンナ ────── */
   belladonna: {
-    onSummon: function(c){
+    onEntered: function(c){
       var bellUid=c.uid;
       var canHands=G.oppHand.length>0, canMana=G.myDeck.length>0;
       showPopup('悪魔妖精 ベラドンナ',
@@ -1560,7 +1561,7 @@ var CARD_EFFECTS = {
 
   /* ────── マーダン=ロウ ────── */
   maardan: {
-    onSummon: function(c){
+    onEntered: function(c){
       var crs=G.oppHand.filter(function(x){return x.type==='creature';});
       if(crs.length===0){log('w','🌑 マーダン：相手手札にクリーチャーなし');return;}
       if(G.oppHand.length===1&&crs.length===1){
@@ -1585,19 +1586,19 @@ var CARD_EFFECTS = {
 
   /* ────── フットレス＝トレース ────── */
   footless: {
-    onSummon: function(c){log('w','🌑 フットレス：場に出た（ターン終了時に墓地肥やし＋回収）');},
+    onEntered: function(c){log('w','🌑 フットレス：場に出た（ターン終了時に墓地肥やし＋回収）');},
     onSpell:  function(c){log('w','🌑 力が欲しいか？：アビス・メクレイド5！');execMekleido5(true);}
   },
 
   /* ────── テレスコ=テレス ────── */
   teresu: {
-    onSummon: function(c){log('w','🌑 テレス：場に出た（相手ターン開始時にハンデス発動）');},
+    onEntered: function(c){log('w','🌑 テレス：場に出た（相手ターン開始時にハンデス発動）');},
     onOppSummon: function(c){log('l','相手テレス：次の相手ターン開始時からハンデス発動');}
   },
 
   /* ────── ア:エヌ:マクア ────── */
   aenumakua: {
-    onSummon: function(c){
+    onEntered: function(c){
       showPopup('ア:エヌ:マクア','出た時：次のうちいずれか1つを選ぶ。',
         [{label:'① 山札上2枚をタップインしマナゾーンへ。その後マナ1枚を手札へ',cls:''},
          {label:'② プレイヤーを1人選ぶ。その墓地を山札の下に置く',cls:''},
@@ -1658,7 +1659,7 @@ var CARD_EFFECTS = {
           }
           log('w','💠 ティンパニ：ヨビニオン「'+found.name+'」を発見！バトルゾーンへ');
           G.myBattle.push({id:found.id,name:found.name,cost:found.cost,pow:found.pow,type:found.type,civ:found.civ,icon:found.icon,eff:found.eff,uid:nuid(),tapped:false,summoned:true,twin:found.twin,spellName:found.spellName,spellCost:found.spellCost,spellEff:found.spellEff});
-          mySummonEff(found); checkJagaisuto(found);
+          myEnteredEff(found); checkJagaisuto(found);
           var rest=revealed.filter(function(x){return x.uid!==found.uid;});
           rest.sort(function(){return Math.random()-.5;});
           for(var i=0;i<rest.length;i++)G.myDeck.unshift(rest[i]);
@@ -1682,7 +1683,7 @@ var CARD_EFFECTS = {
 
   /* ────── ドミー=ゾー ────── */
   dommy: {
-    onSummon: function(c){
+    onEntered: function(c){
       showPopup('ドミー=ゾー','自分の山札の上から5枚を墓地に置いてもよい。',
         [{label:'✅ 5枚墓地に置く',cls:'yes'},{label:'✋ 置かない',cls:'no'}],
         function(di){
@@ -1709,7 +1710,7 @@ var CARD_EFFECTS = {
 
   /* ────── 邪幽 ジャガイスト ────── */
   jagaisuto: {
-    onSummon: function(c){
+    onEntered: function(c){
       if(G.myHand.length<2){
         log('w','🌑 ジャガイスト：手札が2枚未満のため発動不可');
         return;
@@ -1805,7 +1806,7 @@ var CARD_EFFECTS = {
               if(!sel){log('w','🌑 決断②：スキップ');cb();return;}
               G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
               G.myBattle.push({id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:true});
-              log('w','🌑 決断②：「'+sel.name+'」を墓地から召喚！');mySummonEff(sel);cb();
+              log('w','🌑 決断②：「'+sel.name+'」を墓地から召喚！');myEnteredEff(sel);cb();
             },{skipLabel:'✋ 出さない'});
             return;
           } else {
@@ -1834,14 +1835,20 @@ var CARD_EFFECTS = {
 }; /* end CARD_EFFECTS */
 
 /* ══ 効果ディスパッチャー ══ */
-function mySummonEff(c){
+/* ══ 効果ディスパッチャー ══
+   myEnteredEff(c) : 場に出た時（召喚・メクレイド・リアニ等すべて）
+   myEnteredEff(c)  : 召喚された時のみ（手札からコストを払った時）
+   ※ playCardDirect では両方を呼ぶ
+   ※ メクレイド・アビスベル等では myEnteredEff のみ呼ぶ
+══ */
+function myEnteredEff(c){
   if(c.type==='creature') G.turnCreatureCount=(G.turnCreatureCount||0)+1;
-  // ティンパニ：ちょうど2体目トリガー
+  // ティンパニ：ちょうど2体目トリガー（場に出た時に発動）
   if(c.type==='creature'&&G.turnCreatureCount===2&&c.id!=='tinpani'){
     var tinpanis=G.myBattle.filter(function(x){return x.id==='tinpani';});
     if(tinpanis.length>0){
       var tp=tinpanis[0];
-      G_popupSourceUid=tp.uid; // ティンパニの誘発
+      G_popupSourceUid=tp.uid;
       showPopup('ティンパニ=シンバリー',
         '自分の'+G.turnCreatureCount+'体目のクリーチャーが出た！\nティンパニを破壊してもよい。\nそうしたら相手はクリーチャー1体を選び破壊する。',
         [{label:'⚡ ティンパニを自壊させる',cls:'yes'},{label:'✋ 発動しない',cls:'no'}],
@@ -1861,10 +1868,23 @@ function mySummonEff(c){
       );
     }
   }
+  // 出た時効果（onEntered）
+  var eff=CARD_EFFECTS[c.id];
+  if(eff&&eff.onEntered){
+    G_popupSourceUid=c.uid;
+    eff.onEntered(c);
+    if(!G_popupWaiting) G_popupSourceUid=null;
+  }
+}
+
+function mySummonEff(c){
+  // 召喚時のみの効果（onSummon）
+  // ※ティンパニのヨビニオンは召喚時のみ
   var eff=CARD_EFFECTS[c.id];
   if(eff&&eff.onSummon){
-    G_popupSourceUid=c.uid; // 出た時誘発
+    G_popupSourceUid=c.uid;
     eff.onSummon(c);
+    if(!G_popupWaiting) G_popupSourceUid=null;
   }
 }
 
@@ -1872,8 +1892,9 @@ function spellEff(c,isMe){
   if(!isMe){render();return;}
   var eff=CARD_EFFECTS[c.id];
   if(eff&&eff.onSpell){
-    G_popupSourceUid=c.uid; // 呪文効果発動
+    G_popupSourceUid=c.uid;
     eff.onSpell(c);
+    if(!G_popupWaiting) G_popupSourceUid=null;
   }
   render();
 }
@@ -1913,7 +1934,7 @@ function checkJagaisuto(deckCreature){
         twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff
       });
       log('w','🌑 ジャガイスト：「'+sel.name+'」を墓地から召喚！このターン相手プレイヤーを攻撃可');
-      mySummonEff(sel);
+      myEnteredEff(sel);
       render(); updateBtns();
     },
     {skipLabel:'✋ 出さない'}
@@ -1963,7 +1984,7 @@ function execMekleido5(isMe){
         log('w','🌑 メクレイド5：「'+sel.name+'」をタダ召喚！');
         if(sel.type==='creature'){
           G.myBattle.push({id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:true,twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff});
-          mySummonEff(sel);
+          myEnteredEff(sel);
           checkJagaisuto(sel);
         } else {
           G.grave.push(sel);
@@ -2291,7 +2312,7 @@ function execAttack(c,target){
           if(sidx===gOpts.length-1){log('w','🌑 シビルカウント：使わない');return;}
           var gc=G.oppGrave[sidx];
           log('w','🌑 シビルカウント：「'+gc.name+'」の能力発動！');
-          mySummonEff(gc);
+          myEnteredEff(gc);
           G.oppGrave=G.oppGrave.filter(function(x){return x.uid!==gc.uid;});
           G.oppDeck.unshift(gc);
           log('w','🌑「'+gc.name+'」を相手山札の下へ');
@@ -2582,6 +2603,7 @@ function renderBZ(id,cards,mine){
   var el=document.getElementById(id); el.innerHTML='';
   for(var i=0;i<cards.length;i++){
     var c=cards[i];
+    c._inBZ=true; // バトルゾーンのカードはクリック選択不要
     // カード+バッジのラッパー
     var wrap=document.createElement('div');
     wrap.style.cssText='display:inline-flex;flex-direction:column;align-items:center;';
@@ -2657,7 +2679,7 @@ function mkCard(c,clickable){
   var isMFcard=hasAbility(c,'マッハファイター');
   var isSAcard=hasAbility(c,'スピードアタッカー');
   var isSick=c.summoned&&!isMFcard&&!isSAcard&&!c.abyssRush;
-  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(isSick?' sick':'')+(c.sealed?' sealed':'')+(G.sel===c.uid?' sel':'')+(G_popupSourceUid===c.uid?' effing':'');
+  var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(isSick?' sick':'')+(c.sealed?' sealed':'')+(!c._inBZ&&G.sel===c.uid?' sel':'')+(G_popupSourceUid===c.uid?' effing':'');
   var d=document.createElement('div');
   d.className=cls;
 
@@ -2680,14 +2702,14 @@ function mkCard(c,clickable){
     d.innerHTML='<span class="ccost">'+c.cost+'</span>'+icoHtml+'<div class="cname">'+c.name+'</div><div class="cpow">'+(c.pow>0?(c.pow>=10000?Math.round(c.pow/1000)+'k':c.pow):'呪文')+'</div>';
   }
   if(clickable){
-    (function(uid,card){
+    (function(uid,card,inBZ){
       d.onclick=function(e){
         hideCardActionPopup();
-        selCard(uid); updateBtns();
+        if(!inBZ){ selCard(uid); updateBtns(); } // バトルゾーンはクリック選択不要
       };
       // ダブルクリックでプレビュー
       bindDoubleTap(d, function(e){e.stopPropagation();openCardModal(card);});
-    })(c.uid,c);
+    })(c.uid,c,!!c._inBZ);
   } else {
     // クリック不可カード（相手のカード等）もダブルクリックでプレビュー可
     (function(card){bindDoubleTap(d, function(e){e.stopPropagation();openCardModal(card);});})(c);
