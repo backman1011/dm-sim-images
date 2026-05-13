@@ -1236,10 +1236,8 @@ function updateBtns(){
     return;
   }
   // 攻撃可否チェック
-  var hasAbyssbell=G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
-  // マッハファイター：出たターン(summoned=true)のみアンタップに攻撃可
-  var isMachFighter=(hasAbyssbell||(c.eff&&c.eff.indexOf('マッハファイター')!==-1))&&c.summoned;
-  var isSA=c.eff&&c.eff.indexOf('スピードアタッカー')!==-1;
+  var isMachFighter=hasAbility(c,'マッハファイター')&&c.summoned;
+  var isSA=hasAbility(c,'スピードアタッカー');
   var canMoveWithSick=isSA||isMachFighter;
   var baseCanAtk=inB&&!c.tapped&&G.phase===4&&(!c.summoned||canMoveWithSick);
   var canAtk=false;
@@ -1440,6 +1438,27 @@ function doSummon(){
     fxFloat('呪文！','#88aaff');
   }
   G.sel=null; render(); updateBtns();
+}
+
+/* ══════════════════════════════════════════
+   hasAbility(c, ability)
+   カードがある能力を持っているか判定する共通関数
+   ① 自身のeffテキストに書いてある
+   ② 場の常在型付与効果でもらっている
+   ══════════════════════════════════════════ */
+function hasAbility(c, ability){
+  // ① 自身のeffテキストチェック
+  if(c.eff && c.eff.indexOf(ability) !== -1) return true;
+
+  // ② 場の常在型付与効果チェック
+  var isMyCard = G.myBattle.filter(function(x){ return x.uid === c.uid; }).length > 0;
+  if(isMyCard){
+    // アビスベル：自分のアビスにマッハファイターを付与
+    var hasAbyssbell = G.myBattle.filter(function(x){ return x.id === 'abyssbell'; }).length > 0;
+    if(hasAbyssbell && ability === 'マッハファイター' && ABYSS_IDS.indexOf(c.id) >= 0) return true;
+  }
+
+  return false;
 }
 
 /* ══════════════════════════════════════════
@@ -2099,10 +2118,8 @@ function doAttack(){
   var c=null; for(var i=0;i<G.myBattle.length;i++) if(G.myBattle[i].uid===G.sel){c=G.myBattle[i];break;}
   if(!c||c.tapped) return;
 
-  var hasAbyssbell=G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
-  // マッハファイター：出たターン(summoned=true)のみアンタップに攻撃可
-  var hasMachFighter=(hasAbyssbell||(c.eff&&c.eff.indexOf('マッハファイター')!==-1))&&c.summoned;
-  var hasSA=c.eff&&c.eff.indexOf('スピードアタッカー')!==-1;
+  var hasMachFighter=hasAbility(c,'マッハファイター')&&c.summoned;
+  var hasSA=hasAbility(c,'スピードアタッカー');
 
   // 召喚酔いチェック
   if(c.summoned){
@@ -2481,10 +2498,8 @@ function showBZActionPopup(c, cardEl){
 }
 function mkCard(c,clickable){
   var cm={'n':'cn','d':'cd','m':'cm','l':'cl'};
-  var isMyCard=G.myBattle.filter(function(x){return x.uid===c.uid;}).length>0;
-  var hasAbyssbell4=isMyCard&&G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
-  var isMFcard=(hasAbyssbell4||(c.eff&&c.eff.indexOf('マッハファイター')!==-1));
-  var isSAcard=(c.eff&&c.eff.indexOf('スピードアタッカー')!==-1);
+  var isMFcard=hasAbility(c,'マッハファイター');
+  var isSAcard=hasAbility(c,'スピードアタッカー');
   var isSick=c.summoned&&!isMFcard&&!isSAcard;
   var cls='card '+(cm[c.civ]||'cd')+(c.tapped?' tap':'')+(isSick?' sick':'')+(c.sealed?' sealed':'')+(G.sel===c.uid?' sel':'');
   var d=document.createElement('div');
@@ -2499,9 +2514,8 @@ function mkCard(c,clickable){
       '<img src="'+CARD_IMAGES[c.id]+'" style="width:100%;height:100%;object-fit:cover;border-radius:4px;display:block;">'+
       '<div class="cpow" style="position:absolute;bottom:2px;right:2px;">'+(c.pow>0?c.pow:'呪文')+'</div>';
     if(c.summoned){
-      var hasAbyssbell2=isMyCard&&G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
-      var isMF=(hasAbyssbell2||(c.eff&&c.eff.indexOf('マッハファイター')!==-1));
-      var isSA2=(c.eff&&c.eff.indexOf('スピードアタッカー')!==-1);
+      var isMF=hasAbility(c,'マッハファイター');
+      var isSA2=hasAbility(c,'スピードアタッカー');
       var badgeText= isMF ? 'MF' : (isSA2 ? 'SA' : '酔');
       var badgeColor= isMF ? '#88ffcc' : '#ff8888';
       d.innerHTML+='<div style="position:absolute;bottom:2px;left:2px;font-size:.42rem;color:'+badgeColor+';background:rgba(0,0,0,.6);border-radius:2px;padding:0 2px;line-height:1.4;">'+badgeText+'</div>';
@@ -2516,9 +2530,8 @@ function mkCard(c,clickable){
     }
     d.innerHTML='<span class="ccost">'+c.cost+'</span>'+icoHtml+'<div class="cname">'+c.name+'</div><div class="cpow">'+(c.pow>0?(c.pow>=10000?Math.round(c.pow/1000)+'k':c.pow):'呪文')+'</div>';
     if(c.summoned){
-      var hasAbyssbell3=isMyCard&&G.myBattle.filter(function(x){return x.id==='abyssbell';}).length>0;
-      var isMF2=(hasAbyssbell3||(c.eff&&c.eff.indexOf('マッハファイター')!==-1));
-      var isSA3=(c.eff&&c.eff.indexOf('スピードアタッカー')!==-1);
+      var isMF2=hasAbility(c,'マッハファイター');
+      var isSA3=hasAbility(c,'スピードアタッカー');
       var badgeText2= isMF2 ? 'MF' : (isSA3 ? 'SA' : '酔');
       var badgeColor2= isMF2 ? '#88ffcc' : '#ff8888';
       d.innerHTML+='<div style="position:absolute;bottom:2px;left:2px;font-size:.42rem;color:'+badgeColor2+';background:rgba(0,0,0,.7);border-radius:2px;padding:0 2px;line-height:1.4;">'+badgeText2+'</div>';
