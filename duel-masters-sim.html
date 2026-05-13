@@ -80,6 +80,27 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .t-start:hover{transform:scale(1.05) translateY(-2px);box-shadow:0 0 40px rgba(255,204,0,.45);}
 .t-test{position:fixed;bottom:20px;right:20px;z-index:2;padding:8px 18px;border-radius:20px;border:1px solid #666;background:rgba(255,255,255,.06);color:#aaa;font-size:.68rem;font-family:'Noto Sans JP',sans-serif;cursor:pointer;transition:all .18s;letter-spacing:.05em;}
 .t-test:hover{border-color:#ff9900;color:#ff9900;background:rgba(255,153,0,.1);}
+/* バージョンバッジ */
+#ver-badge{position:fixed;bottom:14px;left:16px;z-index:10;padding:5px 10px;border-radius:8px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:rgba(255,255,255,.35);font-size:.58rem;letter-spacing:.05em;cursor:pointer;transition:all .18s;font-family:'Noto Sans JP',sans-serif;}
+#ver-badge:hover{border-color:rgba(255,204,0,.4);color:rgba(255,204,0,.8);background:rgba(255,204,0,.06);}
+/* バージョンモーダル */
+#ver-modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:800;align-items:center;justify-content:center;}
+#ver-modal.open{display:flex;}
+#ver-modal-inner{background:#0a0a1a;border:1px solid var(--gold);border-radius:12px;padding:18px;max-width:380px;width:92%;max-height:80vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 0 32px rgba(255,204,0,.2);animation:mdIn .18s ease;overflow:hidden;}
+#ver-modal-inner h2{font-size:.8rem;font-weight:900;color:var(--gold);letter-spacing:.06em;flex-shrink:0;}
+#ver-modal-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+#ver-modal-list::-webkit-scrollbar{width:3px;}
+#ver-modal-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.2);}
+.vm-block{}
+.vm-header{display:flex;align-items:baseline;gap:8px;margin-bottom:6px;}
+.vm-ver{font-size:.72rem;font-weight:900;color:var(--gold);}
+.vm-date{font-size:.54rem;color:rgba(255,255,255,.35);}
+.vm-logs{display:flex;flex-direction:column;gap:3px;}
+.vm-log{font-size:.56rem;color:rgba(255,255,255,.6);border-left:2px solid rgba(255,255,255,.15);padding:2px 0 2px 8px;line-height:1.55;}
+.vm-log.fix{border-color:#ff7755;color:rgba(255,200,180,.75);}
+.vm-log.add{border-color:#55cc88;color:rgba(180,255,200,.75);}
+.vm-log.chg{border-color:#88aaff;color:rgba(180,200,255,.75);}
+.vm-sep{height:1px;background:rgba(255,255,255,.07);margin:4px 0;}
 /* テストモード中のバッジ */
 #test-badge{display:none;position:fixed;top:8px;left:50%;transform:translateX(-50%);z-index:999;background:#ff6600;color:#fff;font-size:.6rem;font-weight:900;padding:3px 14px;border-radius:20px;letter-spacing:.08em;pointer-events:none;}
 #test-badge.on{display:block;}
@@ -446,6 +467,16 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
   </div>
   <button class="t-start" onclick="startCoin()">デュエル開始</button>
   <button class="t-test" onclick="startTest()">🔧 テストモード</button>
+  <button id="ver-badge" onclick="openVerModal()"></button>
+</div>
+
+<!-- バージョンモーダル -->
+<div id="ver-modal" onclick="closeVerModal()">
+  <div id="ver-modal-inner" onclick="event.stopPropagation()">
+    <h2>📋 変更履歴</h2>
+    <div id="ver-modal-list"></div>
+    <button class="modal-close-btn" onclick="closeVerModal()">✕ 閉じる</button>
+  </div>
 </div>
 
 <!-- コイントス -->
@@ -644,6 +675,73 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 /* ══════════════════════════════════════════
    カードデータ（data/cards.jsonから読み込み）
 ══════════════════════════════════════════ */
+/* ══ バージョン情報 ══
+   type: 'add'=緑 / 'fix'=赤 / 'chg'=青
+*/
+var VERSION_LOG = [
+  {
+    ver: 'v1.3.0', date: '2025-05-13',
+    logs: [
+      {type:'add', text:'召喚・呪文・場に出る、全アクションにバーンエフェクト追加'},
+      {type:'fix', text:'ティンパニ召喚時にエフェクトが出ない問題を修正'},
+      {type:'fix', text:'ティンパニ onSummon が2回発火する問題を修正'},
+    ]
+  },
+  {
+    ver: 'v1.2.0', date: '2025-05-13',
+    logs: [
+      {type:'fix', text:'アビスラッシュをプレイヤーのみ攻撃可に修正'},
+      {type:'fix', text:'ジャガイスト：攻撃したらターン終了時山札の下に修正'},
+      {type:'fix', text:'秩序の意志：次の自分ターン開始時に封印解除'},
+      {type:'chg', text:'onSummon をコールバックチェーンで順番実行するよう統合'},
+    ]
+  },
+  {
+    ver: 'v1.1.0', date: '2025-05-13',
+    logs: [
+      {type:'add', text:'デッキ管理・保存機能'},
+      {type:'add', text:'墓地詠唱・アビスラッシュ UI'},
+      {type:'chg', text:'バトルゾーンホバーでアタックボタン表示'},
+    ]
+  },
+];
+
+function renderVersionBadge(){
+  var latest = VERSION_LOG[0];
+  var badge = document.getElementById('ver-badge');
+  if(!badge) return;
+  badge.textContent = latest.ver + '  ' + latest.date;
+}
+
+function openVerModal(){
+  var list = document.getElementById('ver-modal-list');
+  if(!list) return;
+  list.innerHTML = '';
+  for(var vi=0; vi<VERSION_LOG.length; vi++){
+    var v = VERSION_LOG[vi];
+    var block = document.createElement('div');
+    block.className = 'vm-block';
+    var hdr = '<div class="vm-header"><span class="vm-ver">'+v.ver+'</span><span class="vm-date">'+v.date+'</span></div>';
+    var logs = '<div class="vm-logs">';
+    for(var li=0; li<v.logs.length; li++){
+      logs += '<div class="vm-log '+v.logs[li].type+'">'+v.logs[li].text+'</div>';
+    }
+    logs += '</div>';
+    block.innerHTML = hdr + logs;
+    list.appendChild(block);
+    if(vi < VERSION_LOG.length-1){
+      var sep = document.createElement('div');
+      sep.className = 'vm-sep';
+      list.appendChild(sep);
+    }
+  }
+  document.getElementById('ver-modal').className = 'open';
+}
+
+function closeVerModal(){
+  document.getElementById('ver-modal').className = '';
+}
+
 var CARD_IMAGES = {
   cardback:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MyA4OCI+CiAgPGRlZnM+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImJnIiBjeD0iNTAlIiBjeT0iNTAlIiByPSI2MCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMWEzYThhIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA1MGQyZSIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0iZ2xvdyIgY3g9IjUwJSIgY3k9IjUwJSIgcj0iNTAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2ZmZGQwMCIgc3RvcC1vcGFjaXR5PSIwLjkiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI2MCUiIHN0b3AtY29sb3I9IiNmZmFhMDAiIHN0b3Atb3BhY2l0eT0iMC42Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2ZmNjYwMCIgc3RvcC1vcGFjaXR5PSIwIi8+CiAgICA8L3JhZGlhbEdyYWRpZW50PgogIDwvZGVmcz4KICA8IS0tIOiDjOaZryAtLT4KICA8cmVjdCB3aWR0aD0iNjMiIGhlaWdodD0iODgiIHJ4PSI0IiBmaWxsPSJ1cmwoI2JnKSIvPgogIDwhLS0g5aSW5p6gIC0tPgogIDxyZWN0IHg9IjEuNSIgeT0iMS41IiB3aWR0aD0iNjAiIGhlaWdodD0iODUiIHJ4PSIzIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzU1Y2MiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIOOCsOODreODvCAtLT4KICA8ZWxsaXBzZSBjeD0iMzEuNSIgY3k9IjQ0IiByeD0iMjIiIHJ5PSIyMiIgZmlsbD0idXJsKCNnbG93KSIgb3BhY2l0eT0iMC41Ii8+CiAgPCEtLSDjg6HjgqTjg7PjgrXjg7zjgq/jg6sgLS0+CiAgPGNpcmNsZSBjeD0iMzEuNSIgY3k9IjQ0IiByPSIxOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZjYzAwIiBzdHJva2Utd2lkdGg9IjIuNSIgb3BhY2l0eT0iMC45Ii8+CiAgPGNpcmNsZSBjeD0iMzEuNSIgY3k9IjQ0IiByPSIxNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZhYTAwIiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNiIvPgogIDwhLS0g5YaF5YG044Gu6KOF6aO+IC0tPgogIDxjaXJjbGUgY3g9IjMxLjUiIGN5PSI0NCIgcj0iNyIgZmlsbD0iI2ZmY2MwMCIgb3BhY2l0eT0iMC44NSIvPgogIDxjaXJjbGUgY3g9IjMxLjUiIGN5PSI0NCIgcj0iNCIgZmlsbD0iI2ZmZjhhYSIgb3BhY2l0eT0iMC45NSIvPgogIDwhLS0g44Kz44O844OK44O86KOF6aO+IC0tPgogIDxjaXJjbGUgY3g9IjgiIGN5PSI4IiByPSIyLjUiIGZpbGw9IiMzMzY2ZGQiIHN0cm9rZT0iIzY2OTlmZiIgc3Ryb2tlLXdpZHRoPSIwLjgiIG9wYWNpdHk9IjAuOCIvPgogIDxjaXJjbGUgY3g9IjU1IiBjeT0iOCIgcj0iMi41IiBmaWxsPSIjMzM2NmRkIiBzdHJva2U9IiM2Njk5ZmYiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjgiLz4KICA8Y2lyY2xlIGN4PSI4IiBjeT0iODAiIHI9IjIuNSIgZmlsbD0iIzMzNjZkZCIgc3Ryb2tlPSIjNjY5OWZmIiBzdHJva2Utd2lkdGg9IjAuOCIgb3BhY2l0eT0iMC44Ii8+CiAgPGNpcmNsZSBjeD0iNTUiIGN5PSI4MCIgcj0iMi41IiBmaWxsPSIjMzM2NmRkIiBzdHJva2U9IiM2Njk5ZmYiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjgiLz4KICA8IS0tIOS4iuS4i+ijhemjvuODqeOCpOODsyAtLT4KICA8bGluZSB4MT0iMTQiIHkxPSI2IiB4Mj0iNDkiIHkyPSI2IiBzdHJva2U9IiM0NDc3ZWUiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjYiLz4KICA8bGluZSB4MT0iMTQiIHkxPSI4MiIgeDI9IjQ5IiB5Mj0iODIiIHN0cm9rZT0iIzQ0NzdlZSIgc3Ryb2tlLXdpZHRoPSIwLjgiIG9wYWNpdHk9IjAuNiIvPgo8L3N2Zz4="
 };
@@ -1461,8 +1559,7 @@ function playCardDirect(c, asSpell, ec){
     G.myBattle.push({id:c.id,name:c.name,cost:c.cost,pow:c.pow,type:c.type,civ:c.civ,icon:c.icon,eff:c.eff,uid:c.uid,tapped:false,summoned:true,twin:c.twin,spellName:c.spellName,spellCost:c.spellCost,spellEff:c.spellEff});
     log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
     fxFloat('召喚！','#88ff88');
-    myEnteredEff(c); // 場に出た時の効果
-    mySummonEff(c);  // 召喚時のみの効果（ティンパニヨビニオン等）
+    myEnteredEff(c, true); // 場に出た時 + 召喚時効果をチェーン実行
   } else if(asSpell && c.twin){
     // ツインパクトの呪文面
     G.grave.push(Object.assign({},c,{usedAsSpell:true}));
@@ -1530,7 +1627,7 @@ function doSummon(){
         log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
         log('m','✨ '+c.eff);
         fxFloat('召喚！','#88ff88');
-        myEnteredEff(c); mySummonEff(c);
+        myEnteredEff(c, true); // 場に出た時 + 召喚時効果をチェーン実行
       }
       G.sel=null; render(); updateBtns();
     });
@@ -1549,7 +1646,7 @@ function doSummon(){
     log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
     log('m','✨ '+c.eff);
     fxFloat('召喚！','#88ff88');
-    myEnteredEff(c); mySummonEff(c);
+    myEnteredEff(c, true); // 場に出た時 + 召喚時効果をチェーン実行
   } else {
     G.grave.push(c);
     log('m','💫「'+c.name+'」発動！（コスト'+ec+'）');
@@ -1910,9 +2007,24 @@ var CARD_EFFECTS = {
    ※ playCardDirect では両方を呼ぶ
    ※ メクレイド・アビスベル等では myEnteredEff のみ呼ぶ
 ══ */
-function myEnteredEff(c){
+// isSummon=true のとき、onEntered完了後さらに onSummon（ヨビニオン等）をチェーン実行する
+function myEnteredEff(c, isSummon){
   if(c.type==='creature'){
     G.turnCreatureCount=(G.turnCreatureCount||0)+1;
+  }
+
+  // step3: onSummon（召喚時のみ）を flashCard 付きで実行（バーンは冒頭で済み）
+  function step3(){
+    if(!isSummon) return;
+    var effS=CARD_EFFECTS[c.id];
+    if(!(effS&&effS.onSummon)) return;
+    G_popupSourceUid=c.uid;
+    render();
+    flashCard(c.uid, function(){
+      render();
+      effS.onSummon(c);
+      if(!G_popupWaiting) G_popupSourceUid=null;
+    });
   }
 
   function step2(){
@@ -1928,20 +2040,24 @@ function myEnteredEff(c){
             '自分の'+G.turnCreatureCount+'体目のクリーチャーが出た！\nティンパニを破壊してもよい。\nそうしたら相手はクリーチャー1体を選び破壊する。',
             [{label:'⚡ ティンパニを自壊させる',cls:'yes'},{label:'✋ 発動しない',cls:'no'}],
             function(ti){
-              if(ti===1){log('w','💠 ティンパニ：発動しない');return;}
+              if(ti===1){log('w','💠 ティンパニ：発動しない');step3();return;}
               G.myBattle=G.myBattle.filter(function(x){return x.uid!==tp.uid;});G.grave.push(tp);
               log('w','💠 ティンパニ：自壊！相手はクリーチャーを1体選んで破壊する');
               if(G.oppBattle.length>0){
                 showCardSelectPopup('ティンパニ効果','相手はクリーチャーを1体選んで破壊する。',G.oppBattle,function(sel){
-                  if(!sel)return;
+                  if(!sel){step3();return;}
                   G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==sel.uid;});G.oppGrave.push(sel);
                   log('l','💀 ティンパニ効果：「'+sel.name+'」破壊！');render();
+                  step3();
                 });
+              } else {
+                step3();
               }
               render();
             }
           );
         });
+        return; // step3はティンパニコールバック内で呼ぶ
       }
     }
     // 出た時効果（onEntered）
@@ -1953,25 +2069,20 @@ function myEnteredEff(c){
         render();
         eff.onEntered(c);
         if(!G_popupWaiting) G_popupSourceUid=null;
+        step3();
       });
     } else {
       G_popupSourceUid=null;
+      step3();
     }
   }
 
-  // 常にバーンエフェクトを出す（クリーチャー=黄金、呪文/その他=青紫）
+  // バーンエフェクト → step2（クリーチャー=黄金、呪文/その他=青紫）
   summonFx(c, step2, c.type==='creature' ? 'creature' : 'spell');
 }
 
 function mySummonEff(c){
-  // 召喚時のみの効果（onSummon）
-  // ※ティンパニのヨビニオンは召喚時のみ
-  var eff=CARD_EFFECTS[c.id];
-  if(eff&&eff.onSummon){
-    G_popupSourceUid=c.uid;
-    eff.onSummon(c);
-    if(!G_popupWaiting) G_popupSourceUid=null;
-  }
+  // 統合済み。myEnteredEff(c, true) で onSummon まで処理される
 }
 
 function spellEff(c,isMe){
@@ -3316,6 +3427,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var msg = document.getElementById('load-msg');
     if(msg) msg.parentNode.removeChild(msg);
     if(titleEl) titleEl.className = 'on';
+    renderVersionBadge();
   });
 });
 </script>
