@@ -1303,13 +1303,13 @@ function endTurn(){
           if(sel.src==='grave'){
             var p=sel._orig;
             G.grave=G.grave.filter(function(x){return x.uid!==p.uid;});
-            G.myBattle.push({id:p.id,name:p.name,cost:p.cost,pow:p.pow,type:p.type,civ:p.civ,icon:p.icon,eff:p.eff,uid:nuid(),tapped:false,summoned:true});
+            G.myBattle.push(makeCard(p, {summoned:true}));
             log('w','💠 アビスベル：「'+p.name+'」を墓地から召喚！');
             myEnteredEff(p);
           } else {
             G.myMana.splice(sel.manaIdx,1);
             var d=sel._def;
-            G.myBattle.push({id:d.id,name:d.name,cost:d.cost,pow:d.pow,type:d.type,civ:d.civ,icon:d.icon,eff:d.eff,uid:nuid(),tapped:false,summoned:true});
+            G.myBattle.push(makeCard(d, {summoned:true}));
             log('w','💠 アビスベル：「'+d.name+'」をマナから召喚！');
             myEnteredEff(d);
           }
@@ -1398,7 +1398,7 @@ function oppTurn(){
       var s=pl[0];
       G.oppHand=G.oppHand.filter(function(c){return c.uid!==s.uid;});
       for(var _i=0;_i<s.cost&&_i<G.oppMana.length;_i++) G.oppMana[_i].tapped=true; // 相手マナ消費
-      G.oppBattle.push({id:s.id,name:s.name,cost:s.cost,pow:s.pow,type:s.type,civ:s.civ,icon:s.icon,eff:s.eff,uid:s.uid,tapped:false,summoned:true});
+      G.oppBattle.push(makeCard(s, {uid:s.uid, summoned:true}));
       log('m','相手「'+s.name+'」召喚（コスト'+s.cost+'）');
       oppSummonEff(s); render();
     }
@@ -1594,7 +1594,7 @@ function updateBtns(){
 function doAbyssRushCard(sel){
   if(G.phase!==3){log('l','メインフェイズ以外ではアビスラッシュできません');return;}
   G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
-  G.myBattle.push({id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:false,abyssRush:true,twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff});
+  G.myBattle.push(makeCard(sel, {abyssRush:true}));
   log('w','🌑 アビスラッシュ：「'+sel.name+'」を墓地から召喚！このターンプレイヤーへの攻撃可・ターン終了時山札の下へ（クリーチャー攻撃不可）');
   fxFloat('ラッシュ！','#ff6699');
   myEnteredEff(sel);
@@ -1625,7 +1625,7 @@ function doAbyssRush(){
     function(sel){
       if(!sel){log('w','🌑 アビスラッシュ：キャンセル');return;}
       G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
-      var bc={id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:false,abyssRush:true,twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff};
+      var bc=makeCard(sel, {abyssRush:true});
       G.myBattle.push(bc);
       log('w','🌑 アビスラッシュ：「'+sel.name+'」を墓地から召喚！このターンプレイヤーへの攻撃可・ターン終了時山札の下へ（クリーチャー攻撃不可）');
       fxFloat('ラッシュ！','#ff6699');
@@ -1682,7 +1682,7 @@ function playCardDirect(c, asSpell, ec){
   G.sel=null;
   if(!asSpell && c.type==='creature'){
     // クリーチャーとして召喚
-    G.myBattle.push({id:c.id,name:c.name,cost:c.cost,pow:c.pow,type:c.type,civ:c.civ,icon:c.icon,eff:c.eff,uid:c.uid,tapped:false,summoned:true,twin:c.twin,spellName:c.spellName,spellCost:c.spellCost,spellEff:c.spellEff});
+    G.myBattle.push(makeCard(c, {uid:c.uid, summoned:true}));
     log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
     fxFloat('召喚！','#88ff88');
     myEnteredEff(c, true); // 場に出た時 + 召喚時効果をチェーン実行
@@ -1749,7 +1749,7 @@ function doSummon(){
         var spellCard={id:c.id,name:c.spellName,cost:c.spellCost,pow:0,type:'spell',civ:c.civ,icon:c.icon,eff:c.spellEff,uid:c.uid};
         spellEff(spellCard,true);
       } else {
-        G.myBattle.push({id:c.id,name:c.name,cost:c.cost,pow:c.pow,type:c.type,civ:c.civ,icon:c.icon,eff:c.eff,uid:c.uid,tapped:false,summoned:true,twin:c.twin,spellName:c.spellName,spellCost:c.spellCost,spellEff:c.spellEff});
+        G.myBattle.push(makeCard(c, {uid:c.uid, summoned:true}));
         log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
         log('m','✨ '+c.eff);
         fxFloat('召喚！','#88ff88');
@@ -1768,7 +1768,7 @@ function doSummon(){
   G.costBonus=0;
   G.myHand=G.myHand.filter(function(x){return x.uid!==c.uid;});
   if(c.type==='creature'){
-    G.myBattle.push({id:c.id,name:c.name,cost:c.cost,pow:c.pow,type:c.type,civ:c.civ,icon:c.icon,eff:c.eff,uid:c.uid,tapped:false,summoned:true});
+    G.myBattle.push(makeCard(c, {uid:c.uid, summoned:true}));
     log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
     log('m','✨ '+c.eff);
     fxFloat('召喚！','#88ff88');
@@ -1780,6 +1780,45 @@ function doSummon(){
     fxFloat('呪文！','#88aaff');
   }
   G.sel=null; render(); updateBtns();
+}
+
+/* ══════════════════════════════════════════
+   makeCard(base, opts)
+   カードインスタンスを生成するファクトリ関数
+   base : カードデータ（手札・デッキ・墓地のオブジェクト）
+   opts : 状態フラグ（省略可）
+     uid       : 指定がなければ nuid() で自動発行
+     tapped    : タップ状態（default: false）
+     summoned  : 召喚酔いフラグ（default: false）
+     sealed    : 封印中（default: false）
+     abyssRush : アビスラッシュで出た（default: false）
+     jagRush   : ジャガイスト経由のアビスラッシュ（default: false）
+   ══════════════════════════════════════════ */
+function makeCard(base, opts){
+  opts = opts || {};
+  return {
+    // 基本情報
+    id:        base.id        || '',
+    name:      base.name      || '',
+    cost:      base.cost      || 0,
+    pow:       base.pow       || 0,
+    type:      base.type      || 'creature',
+    civ:       base.civ       || 'd',
+    icon:      base.icon      || '🃏',
+    eff:       base.eff       || '',
+    race:      base.race      || '',
+    twin:      base.twin      || false,
+    spellName: base.spellName || '',
+    spellCost: base.spellCost || 0,
+    spellEff:  base.spellEff  || '',
+    // 状態フラグ
+    uid:       opts.uid       !== undefined ? opts.uid : nuid(),
+    tapped:    opts.tapped    || false,
+    summoned:  opts.summoned  || false,
+    sealed:    opts.sealed    || false,
+    abyssRush: opts.abyssRush || false,
+    jagRush:   opts.jagRush   || false,
+  };
 }
 
 /* ══════════════════════════════════════════
@@ -1956,7 +1995,7 @@ var CARD_EFFECTS = {
             render();done();return;
           }
           log('w','💠 ティンパニ：ヨビニオン「'+found.name+'」を発見！バトルゾーンへ');
-          G.myBattle.push({id:found.id,name:found.name,cost:found.cost,pow:found.pow,type:found.type,civ:found.civ,icon:found.icon,eff:found.eff,uid:nuid(),tapped:false,summoned:true,twin:found.twin,spellName:found.spellName,spellCost:found.spellCost,spellEff:found.spellEff});
+          G.myBattle.push(makeCard(found, {summoned:true}));
           myEnteredEff(found); checkJagaisuto(found);
           var rest=revealed.filter(function(x){return x.uid!==found.uid;});
           rest.sort(function(){return Math.random()-.5;});
@@ -1970,7 +2009,7 @@ var CARD_EFFECTS = {
       var found=null,revealed=[];
       while(G.oppDeck.length>0){var top=G.oppDeck.pop();revealed.push(top);if(top.type==='creature'&&top.cost<c.cost){found=top;break;}}
       if(found){
-        G.oppBattle.push({id:found.id,name:found.name,cost:found.cost,pow:found.pow,type:found.type,civ:found.civ,icon:found.icon,eff:found.eff,uid:nuid(),tapped:false,summoned:true});
+        G.oppBattle.push(makeCard(found, {summoned:true}));
         log('l','相手ティンパニ：ヨビニオン「'+found.name+'」召喚！');oppSummonEff(found);
       }
       var rest=revealed.filter(function(x){return !found||x.uid!==found.uid;});
@@ -2041,7 +2080,7 @@ var CARD_EFFECTS = {
         if(tgts.length>0){
           tgts.sort(function(a,b){return b.cost-a.cost;});
           var jt=tgts[0]; G.oppGrave=G.oppGrave.filter(function(x){return x.uid!==jt.uid;});
-          G.oppBattle.push({id:jt.id,name:jt.name,cost:jt.cost,pow:jt.pow,type:jt.type,civ:jt.civ,icon:jt.icon,eff:jt.eff,uid:nuid(),tapped:false,summoned:true});
+          G.oppBattle.push(makeCard(jt, {summoned:true}));
           log('l','相手メクレイド5：「'+jt.name+'」墓地から召喚！');oppSummonEff(jt);
         }
       }
@@ -2105,7 +2144,7 @@ var CARD_EFFECTS = {
             showCardSelectPopup('決断②','コスト4以下の闇クリーチャーを墓地から出す。',dark4,function(sel){
               if(!sel){log('w','🌑 決断②：スキップ');cb();return;}
               G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
-              G.myBattle.push({id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:true});
+              G.myBattle.push(makeCard(sel, {summoned:true}));
               log('w','🌑 決断②：「'+sel.name+'」を墓地から召喚！');myEnteredEff(sel);cb();
             },{skipLabel:'✋ 出さない'});
             return;
@@ -2309,12 +2348,7 @@ function checkJagaisuto(deckCreature){
       if(!sel){log('w','🌑 ジャガイスト：墓地から出さない');G.jagaisutoUsed=false;return;}
       G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
       // abyssRush:trueで出す（攻撃可・ターン終了時山札の下へ）
-      G.myBattle.push({
-        id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,
-        civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),
-        tapped:false,summoned:false,abyssRush:true,jagRush:true,
-        twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff
-      });
+      G.myBattle.push(makeCard(sel, {abyssRush:true, jagRush:true}));
       log('w','🌑 ジャガイスト：「'+sel.name+'」を墓地から召喚！このターン相手プレイヤーへの攻撃可（ターン終了時山札の下）');
       myEnteredEff(sel);
       render(); updateBtns();
@@ -2365,7 +2399,7 @@ function execMekleido5(isMe){
         if(!sel){log('w','🌑 メクレイド5：使わない');return;}
         log('w','🌑 メクレイド5：「'+sel.name+'」をタダ召喚！');
         if(sel.type==='creature'){
-          G.myBattle.push({id:sel.id,name:sel.name,cost:sel.cost,pow:sel.pow,type:sel.type,civ:sel.civ,icon:sel.icon,eff:sel.eff,uid:nuid(),tapped:false,summoned:true,twin:sel.twin,spellName:sel.spellName,spellCost:sel.spellCost,spellEff:sel.spellEff});
+          G.myBattle.push(makeCard(sel, {summoned:true}));
           myEnteredEff(sel);
           checkJagaisuto(sel);
         } else {
@@ -2385,7 +2419,7 @@ function execMekleido5(isMe){
       for(var i=putBack.length-1;i>=0;i--) deck.unshift(putBack[i]);
       log('l','相手メクレイド5：「'+chosen.name+'」タダ召喚！');
       if(chosen.type==='creature'){
-        G.oppBattle.push({id:chosen.id,name:chosen.name,cost:chosen.cost,pow:chosen.pow,type:chosen.type,civ:chosen.civ,icon:chosen.icon,eff:chosen.eff,uid:nuid(),tapped:false,summoned:true});
+        G.oppBattle.push(makeCard(chosen, {summoned:true}));
         oppSummonEff(chosen);
       }
     } else {
