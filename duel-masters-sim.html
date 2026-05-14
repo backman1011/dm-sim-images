@@ -765,6 +765,34 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 */
 var VERSION_LOG = [
   {
+    ver: 'v1.10.7', date: '2026-05-14',
+    logs: [
+      {type:'chg', text:'テレスのドロー選択をdiscardFromHand内で連鎖処理する形に変更。UX簡略化として割り切り'},
+      {type:'chg', text:'テレスのonDiscardを削除。discardFromHandが直接テレス枚数分キューに積む'},
+    ]
+  },
+  {
+    ver: 'v1.10.6', date: '2026-05-14',
+    logs: [
+      {type:'chg', text:'テレスのドロー選択ポップアップをシンプルなはい/いいえに変更'},
+    ]
+  },
+  {
+    ver: 'v1.10.5', date: '2026-05-14',
+    logs: [
+      {type:'add', text:'CARD_EFFECTSに_labelを追加。fireEvent/myEnteredEffでキューラベルを自動で引くよう変更'},
+      {type:'chg', text:'全カードの効果に要約ラベルを追加（正確なテキストは後で差し替え予定）'},
+    ]
+  },
+  {
+    ver: 'v1.10.4', date: '2026-05-14',
+    logs: [
+      {type:'fix', text:'fireEventに_checkオプションを追加。キューに積む前に条件チェックできるよう変更'},
+      {type:'fix', text:'ジャガイストにonOtherEntered_checkを追加。mekleido/yobinion以外ではキューに積まれないよう修正'},
+      {type:'fix', text:'discardFromHand内のresolveTriggerQueue呼び出しを削除。done()後に自動解決に任せる'},
+    ]
+  },
+  {
     ver: 'v1.10.3', date: '2026-05-14',
     logs: [
       {type:'add', text:'discardFromHand(card, who)を追加。手札から捨てる処理を一元化しfireEvent("onDiscard")を発火'},
@@ -1830,6 +1858,7 @@ var CARD_EFFECTS = {
 
   /* ────── ベラドンナ ────── */
   belladonna: {
+    onEntered_label: '自壊して①ハンデス or ②マナブースト',
     onEntered: function(c, done){
       var bellUid=c.uid;
       var canHands=G.oppHand.length>0, canMana=G.myDeck.length>0;
@@ -1874,6 +1903,8 @@ var CARD_EFFECTS = {
 
   /* ────── マーダン=ロウ ────── */
   maardan: {
+    onEntered_label: '相手クリーチャーを1枚捨てさせる',
+    onOppSummon_label: '相手がクリーチャーを召喚した時',
     onEntered: function(c, done){
       var crs=G.oppHand.filter(function(x){return x.type==='creature';});
       if(crs.length===0){log('w','🌑 マーダン：相手手札にクリーチャーなし');done();return;}
@@ -1900,6 +1931,7 @@ var CARD_EFFECTS = {
 
   /* ────── フットレス＝トレース ────── */
   footless: {
+    onTurnEnd_label: '山札1枚墓地→闇カード1枚回収',
     onSpell: function(c){log('w','🌑 力が欲しいか？：アビス・メクレイド5！');execMekleido5(true, function(){render();});},
     onTurnEnd: function(c, ev, done){
       if(G.myDeck.length>0){
@@ -1928,6 +1960,9 @@ var CARD_EFFECTS = {
   /* ────── テレスコ=テレス ────── */
   teresu: {
     permanent: true,
+    onDiscard_label: '相手が手札を捨てた時、自分は1枚引いてもよい',
+    onTurnStart_label: '相手ターン開始時、相手の手札を1枚捨てさせる',
+    onOppSummon_label: '相手がクリーチャーを召喚した時',
     onPermanent: function(self){
       var bonus = 0;
       if(G.myHand.length === 0)  bonus += 5000;
@@ -1936,21 +1971,6 @@ var CARD_EFFECTS = {
         self.pow = self.basePow + bonus;
         log('s','🌑 テレス：手札0枚プレイヤーがいるためパワー+'+(bonus)+'（'+self.pow+'）');
       }
-    },
-    onDiscard: function(self, ev, done){
-      // 相手が手札を捨てた時、自分はドローしてもよい
-      if(ev.who !== 'opp'){done();return;}
-      if(G.myDeck.length === 0){done();return;}
-      showPopup(
-        '謀遠 テレスコ=テレス',
-        '相手が手札を1枚捨てた。\n自分はカードを1枚引いてもよい。',
-        [{label:'✅ 1枚引く',cls:'yes'},{label:'✋ 引かない',cls:'no'}],
-        function(ci){
-          if(ci===0){ myDraw(true); log('w','🌑 テレス：1枚ドロー'); }
-          else { log('w','🌑 テレス：ドローしない'); }
-          done();
-        }
-      );
     },
     onTurnStart: function(c, ev, done){
       if(G.oppHand.length===0){done();return;}
@@ -1965,6 +1985,7 @@ var CARD_EFFECTS = {
 
   /* ────── ア:エヌ:マクア ────── */
   aenumakua: {
+    onEntered_label: '①マナ2枚追加→1枚手札 ②墓地を山札の下 ③相手の非クリーチャーをマナへ',
     onEntered: function(c, done){
       showPopup('ア:エヌ:マクア','出た時：次のうちいずれか1つを選ぶ。',
         [{label:'① 山札上2枚をタップインしマナゾーンへ。その後マナ1枚を手札へ',cls:''},
@@ -2012,6 +2033,8 @@ var CARD_EFFECTS = {
 
   /* ────── ティンパニ=シンバリー ────── */
   tinpani: {
+    onSummon_label: 'ヨビニオン：コスト未満のクリーチャーを山札から出す',
+    onOppSummon_label: '相手がクリーチャーを召喚した時ヨビニオン',
     onSummon: function(c, done){
       showPopup('ティンパニ=シンバリー ヨビニオン',
         '山札の上から、コスト'+c.cost+'未満のクリーチャーが\n出るまで表向きにしてもよい。残りは山札の下へ。',
@@ -2059,6 +2082,8 @@ var CARD_EFFECTS = {
 
   /* ────── ドミー=ゾー ────── */
   dommy: {
+    onEntered_label: '山札上5枚を墓地に置いてもよい',
+    onOppSummon_label: '相手がクリーチャーを召喚した時、相手の山札5枚墓地へ',
     onEntered: function(c, done){
       showPopup('ドミー=ゾー','自分の山札の上から5枚を墓地に置いてもよい。',
         [{label:'✅ 5枚墓地に置く',cls:'yes'},{label:'✋ 置かない',cls:'no'}],
@@ -2088,6 +2113,9 @@ var CARD_EFFECTS = {
 
   /* ────── 邪幽 ジャガイスト ────── */
   jagaisuto: {
+    onEntered_label: '手札2枚捨てアビス・メクレイド5',
+    onOtherEntered_label: '山札からクリーチャーが出た時、コスト以下のアビスを墓地から出す',
+    onOppSummon_label: '相手がクリーチャーを召喚した時、手札2枚捨ててメクレイド5',
     onEntered: function(c, done){
       if(G.myHand.length<2){
         log('w','🌑 ジャガイスト：手札が2枚未満のため発動不可');
@@ -2107,6 +2135,10 @@ var CARD_EFFECTS = {
         },
         {maxSelect:2}
       );
+    },
+    onOtherEntered_check: function(self, ev){
+      // 山札から出たクリーチャー（mekleido/yobinion）かつターン1回
+      return (ev.playType==='mekleido' || ev.playType==='yobinion') && !G.jagaisutoUsed;
     },
     onOtherEntered: function(self, ev, done){
       // 山札から出たクリーチャーにのみ反応（mekleido/yobinion）
@@ -2159,6 +2191,7 @@ var CARD_EFFECTS = {
   /* ────── アビスベル=覇=ロード ────── */
   abyssbell: {
     permanent: true,
+    onTurnEnd_label: 'コスト6以下のアビスを墓地/マナから出す',
     onPermanent: function(self){
       for(var i=0; i<G.myBattle.length; i++){
         if(ABYSS_IDS.indexOf(G.myBattle[i].id) >= 0){
@@ -2336,9 +2369,15 @@ function fireEvent(eventType, eventData){
     if(eventType==='onOtherEntered' && eventData.card && c.uid===eventData.card.uid) continue;
     var eff = CARD_EFFECTS[c.id];
     if(!eff || !eff[eventType]) continue;
-    (function(card, effect, data){
+    // shouldFire関数があれば積む前に条件チェック
+    if(eff[eventType+'_check'] && !eff[eventType+'_check'](c, eventData)) continue;
+    // ラベルを_labelから引く、なければデフォルト
+    var label = (eff[eventType+'_label']
+      ? '「'+c.name+'」'+eff[eventType+'_label']
+      : '「'+c.name+'」の誘発効果');
+    (function(card, effect, data, lbl){
       queueTrigger(
-        '「'+card.name+'」の誘発効果',
+        lbl,
         card.uid,
         function(done){
           // 解決時点でまだ場にいるか確認
@@ -2349,7 +2388,7 @@ function fireEvent(eventType, eventData){
           });
         }
       );
-    })(c, eff, eventData);
+    })(c, eff, eventData, label);
   }
 }
 /* ══ playType 定義 ══
@@ -2445,8 +2484,11 @@ function myEnteredEff(c, playType){
   var eff=CARD_EFFECTS[c.id];
   if(eff&&eff.onEntered){
     (function(card, effect){
+      var lbl = effect.onEntered_label
+        ? '「'+card.name+'」'+effect.onEntered_label
+        : '「'+card.name+'」の出た時効果';
       queueTrigger(
-        '「'+card.name+'」の出た時効果',
+        lbl,
         card.uid,
         function(done){
           flashCard(card.uid, function(){
@@ -2500,8 +2542,11 @@ function myEnteredEff(c, playType){
     var effS=CARD_EFFECTS[c.id];
     if(effS&&effS.onSummon){
       (function(card, es){
+        var lbl = es.onSummon_label
+          ? '「'+card.name+'」'+es.onSummon_label
+          : '「'+card.name+'」の召喚時効果';
         queueTrigger(
-          '「'+card.name+'」の召喚時効果',
+          lbl,
           card.uid,
           function(done){
             flashCard(card.uid, function(){
@@ -2559,8 +2604,36 @@ function discardFromHand(card, who){
     G.oppHand = G.oppHand.filter(function(x){return x.uid!==card.uid;});
     G.oppGrave.push(card);
   }
+  // テレス以外のonDiscardはキューに積む
   fireEvent('onDiscard', {card:card, who:who});
-  resolveTriggerQueue();
+  // テレスのドロー選択はその場で連鎖処理（UX簡略化）
+  if(who==='opp' && G.myDeck.length>0){
+    var teresuList = G.myBattle.filter(function(x){return x.id==='teresu';});
+    if(teresuList.length>0){
+      // テレス枚数分ドロー選択をキューに積む（連続で出る）
+      for(var ti=0; ti<teresuList.length; ti++){
+        (function(teresu){
+          queueTrigger(
+            '「'+teresu.name+'」相手が手札を捨てた。1枚引く？',
+            teresu.uid,
+            function(done){
+              if(G.myDeck.length===0){done();return;}
+              showPopup(
+                '謀遠 テレスコ=テレス',
+                '相手が手札を捨てた。1枚引く？',
+                [{label:'はい',cls:'yes'},{label:'いいえ',cls:'no'}],
+                function(ci){
+                  if(ci===0){ myDraw(true); log('w','🌑 テレス：1枚ドロー'); }
+                  else { log('w','🌑 テレス：ドローしない'); }
+                  done();
+                }
+              );
+            }
+          );
+        })(teresuList[ti]);
+      }
+    }
+  }
 }
 
 /* ══ アビス・メクレイド5 ══ */
