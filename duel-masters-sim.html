@@ -264,7 +264,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
   0%  {width:10px;height:10px;transform:translate(-50%,-50%) scale(0);opacity:1;}
   100%{width:10px;height:10px;transform:translate(-50%,-50%) scale(8);opacity:0;}
 }
-.card-badges{display:flex;gap:2px;justify-content:flex-start;flex-wrap:wrap;margin-top:2px;min-height:14px;}
+.card-badges{display:flex;gap:2px;justify-content:flex-start;flex-wrap:wrap;position:absolute;bottom:-18px;left:0;min-height:14px;pointer-events:none;}
 .badge{font-size:.42rem;font-weight:900;padding:1px 3px;border-radius:3px;line-height:1.4;letter-spacing:.02em;}
 .badge-sick{background:rgba(60,60,60,.75);color:#888;border:1px solid #555;}
 .badge-mf{background:rgba(80,220,160,.85);color:#000;}
@@ -274,20 +274,21 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .badge-blocker::after{content:'';display:block;width:7px;height:7px;border-radius:50%;background:#4499ff;box-shadow:0 0 4px #4499ff;}
 
 /* 召喚エフェクト：カード画像が前面にバーンと出る */
-#summon-fx{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:9999;}
+#summon-fx{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;pointer-events:none;z-index:9998;}
 #summon-fx.active{animation:summonFxAnim 0.9s ease-out forwards;}
-#summon-fx-img{width:160px;height:224px;object-fit:cover;border-radius:10px;box-shadow:0 0 60px rgba(255,238,68,0.9),0 0 120px rgba(255,204,0,0.5);transform:scale(0);opacity:0;}
+#summon-fx-img{width:160px;height:224px;object-fit:cover;border-radius:10px;box-shadow:0 0 60px rgba(255,255,255,0.95),0 0 120px rgba(220,220,255,0.5);transform:scale(0);opacity:0;}
 #summon-fx.active #summon-fx-img{animation:summonImgAnim 0.9s ease-out forwards;}
-#summon-fx.spell #summon-fx-img{box-shadow:0 0 60px rgba(136,170,255,0.95),0 0 120px rgba(100,80,255,0.6);}
+
+#summon-fx.spell #summon-fx-img{box-shadow:0 0 60px rgba(200,225,255,0.95),0 0 120px rgba(160,210,255,0.6);}
 #summon-fx-icon{font-size:5rem;transform:scale(0);opacity:0;}
 #summon-fx.active #summon-fx-icon{animation:summonImgAnim 0.9s ease-out forwards;}
 /* 呪文エフェクト用オーバーレイ */
-#summon-fx-spell-ring{position:absolute;width:220px;height:220px;border-radius:50%;border:3px solid rgba(136,170,255,0.0);pointer-events:none;}
+#summon-fx-spell-ring{position:absolute;width:220px;height:220px;border-radius:50%;border:3px solid rgba(200,225,255,0.0);pointer-events:none;}
 #summon-fx.spell.active #summon-fx-spell-ring{animation:spellRingAnim 0.85s ease-out forwards;}
 @keyframes spellRingAnim{
-  0%  {width:60px;height:60px;border-color:rgba(180,160,255,0.9);transform:scale(0.2);opacity:1;}
-  50% {border-color:rgba(136,170,255,0.7);}
-  100%{width:220px;height:220px;border-color:rgba(100,80,255,0.0);transform:scale(1.4);opacity:0;}
+  0%  {width:60px;height:60px;border-color:rgba(220,235,255,0.9);transform:scale(0.2);opacity:1;}
+  50% {border-color:rgba(200,225,255,0.7);}
+  100%{width:220px;height:220px;border-color:rgba(160,210,255,0.0);transform:scale(1.4);opacity:0;}
 }
 @keyframes summonImgAnim{
   0%  {transform:scale(0.3);opacity:0;}
@@ -295,6 +296,8 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
   60% {transform:scale(1.05);opacity:1;}
   100%{transform:scale(1.3);opacity:0;}
 }
+
+
 .card.tap{transform:rotate(18deg);}
 .card.tap.sel{transform:rotate(18deg) translateY(-4px) scale(1.06);}
 .card.sealed{opacity:.3;filter:grayscale(.9);}
@@ -1184,7 +1187,7 @@ function runPhase(){
   var p=G.phase;
   setPhase(G.PHASES[p]);
   if(p===0){
-    for(var i=0;i<G.myBattle.length;i++){ G.myBattle[i].tapped=false; G.myBattle[i].summoned=false; }
+    for(var i=0;i<G.myBattle.length;i++){ G.myBattle[i].tapped=false; G.myBattle[i].summoned=false; G.myBattle[i].attacked=false; }
     for(var i=0;i<G.myMana.length;i++) G.myMana[i].tapped=false;
     G.charged=false; G.costBonus=0; G.turnCreatureCount=0; G.jagaisutoUsed=false;
     // 封印解除：自分ターン開始時、封印中の相手クリーチャーの封印を1枚解除
@@ -1212,23 +1215,27 @@ function endTurn(){
   if(G.over) return;
   G.sel=null; G.costBonus=0;
 
-  // アビスラッシュ：ターン終了時に山札の下へ（ジャガイスト経由はtapped=攻撃済みのみ）
+  // アビスラッシュ：ターン終了時処理
   var rushers=G.myBattle.filter(function(x){return x.abyssRush;});
   if(rushers.length>0){
     var toBottom=[], staying=[];
     for(var i=0;i<rushers.length;i++){
       var r=rushers[i];
-      // jagaisuto経由（jagRush:true）は攻撃した場合のみ山札の下
-      // 通常アビスラッシュは攻撃有無に関わらずターン終了時山札の下
-      if(r.jagRush && !r.tapped){
-        // 攻撃していない → バトルゾーンに残留（ただし次ターンは召喚酔い状態に戻す）
-        r.abyssRush=false; r.jagRush=false;
-        staying.push(r.name);
-      } else {
+      if(r.endOfTurn==='toBottom'){
+        // 通常アビスラッシュ：無条件で山札の下へ
         toBottom.push(r);
+      } else if(r.endOfTurn==='toBottomIfAttacked'){
+        // ジャガイスト経由：攻撃した場合のみ山札の下へ
+        if(r.attacked){
+          toBottom.push(r);
+        } else {
+          r.abyssRush=false; r.endOfTurn=null;
+          staying.push(r.name);
+        }
       }
     }
     for(var i=0;i<toBottom.length;i++){
+      
       G.myDeck.unshift(toBottom[i]);
       log('w','🌑 アビスラッシュ：「'+toBottom[i].name+'」を山札の下へ');
     }
@@ -1303,15 +1310,17 @@ function endTurn(){
           if(sel.src==='grave'){
             var p=sel._orig;
             G.grave=G.grave.filter(function(x){return x.uid!==p.uid;});
-            G.myBattle.push(makeCard(p, {summoned:true}));
+            var instance=makeCard(p, {summoned:true});
+            G.myBattle.push(instance);
             log('w','💠 アビスベル：「'+p.name+'」を墓地から召喚！');
-            myEnteredEff(p);
+            myEnteredEff(instance);
           } else {
             G.myMana.splice(sel.manaIdx,1);
             var d=sel._def;
-            G.myBattle.push(makeCard(d, {summoned:true}));
+            var instance=makeCard(d, {summoned:true});
+            G.myBattle.push(instance);
             log('w','💠 アビスベル：「'+d.name+'」をマナから召喚！');
-            myEnteredEff(d);
+            myEnteredEff(instance);
           }
           render();
         },
@@ -1594,10 +1603,11 @@ function updateBtns(){
 function doAbyssRushCard(sel){
   if(G.phase!==3){log('l','メインフェイズ以外ではアビスラッシュできません');return;}
   G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
-  G.myBattle.push(makeCard(sel, {abyssRush:true}));
+  var instance=makeCard(sel, {abyssRush:true, endOfTurn:'toBottom'});
+  G.myBattle.push(instance);
   log('w','🌑 アビスラッシュ：「'+sel.name+'」を墓地から召喚！このターンプレイヤーへの攻撃可・ターン終了時山札の下へ（クリーチャー攻撃不可）');
   fxFloat('ラッシュ！','#ff6699');
-  myEnteredEff(sel);
+  myEnteredEff(instance);
   render(); updateBtns();
 }
 function doGraveSpellCard(sel){
@@ -1625,11 +1635,11 @@ function doAbyssRush(){
     function(sel){
       if(!sel){log('w','🌑 アビスラッシュ：キャンセル');return;}
       G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
-      var bc=makeCard(sel, {abyssRush:true});
+      var bc=makeCard(sel, {abyssRush:true, endOfTurn:'toBottom'});
       G.myBattle.push(bc);
       log('w','🌑 アビスラッシュ：「'+sel.name+'」を墓地から召喚！このターンプレイヤーへの攻撃可・ターン終了時山札の下へ（クリーチャー攻撃不可）');
       fxFloat('ラッシュ！','#ff6699');
-      myEnteredEff(sel);
+      myEnteredEff(bc);
       render(); updateBtns();
     }
   );
@@ -1792,7 +1802,11 @@ function doSummon(){
      summoned  : 召喚酔いフラグ（default: false）
      sealed    : 封印中（default: false）
      abyssRush : アビスラッシュで出た（default: false）
-     jagRush   : ジャガイスト経由のアビスラッシュ（default: false）
+     attacked  : そのターンに攻撃したか（default: false）、アンタップ時にリセット
+     endOfTurn : ターン終了時の処理
+                 null                 = 何もしない
+                 'toBottom'           = 無条件で山札の下へ（通常アビスラッシュ）
+                 'toBottomIfAttacked' = 攻撃した場合のみ山札の下へ（ジャガイスト経由）
    ══════════════════════════════════════════ */
 function makeCard(base, opts){
   opts = opts || {};
@@ -1817,8 +1831,26 @@ function makeCard(base, opts){
     summoned:  opts.summoned  || false,
     sealed:    opts.sealed    || false,
     abyssRush: opts.abyssRush || false,
-    jagRush:   opts.jagRush   || false,
+    attacked:  opts.attacked  || false,
+    endOfTurn: opts.endOfTurn || null,
+    grantedAbilities: [], // [{ability:'マッハファイター', from:'uid'}, ...]
   };
+}
+
+/* ══════════════════════════════════════════
+   能力付与ユーティリティ
+   grantAbility(target, ability, fromUid)
+     target  : 付与対象のカードインスタンス
+     ability : 付与する能力文字列
+     fromUid : 付与元カードのuid（applyPermanentEffectsでリセットされるため剥奪不要）
+   ══════════════════════════════════════════ */
+function grantAbility(target, ability, fromUid){
+  if(!target.grantedAbilities) target.grantedAbilities=[];
+  // 同じ付与元から同じ能力が既にある場合は重複しない
+  for(var i=0;i<target.grantedAbilities.length;i++){
+    if(target.grantedAbilities[i].ability===ability && target.grantedAbilities[i].from===fromUid) return;
+  }
+  target.grantedAbilities.push({ability:ability, from:fromUid});
 }
 
 /* ══════════════════════════════════════════
@@ -1831,12 +1863,11 @@ function hasAbility(c, ability){
   // ① 自身のeffテキストチェック
   if(c.eff && c.eff.indexOf(ability) !== -1) return true;
 
-  // ② 場の常在型付与効果チェック
-  var isMyCard = G.myBattle.filter(function(x){ return x.uid === c.uid; }).length > 0;
-  if(isMyCard){
-    // アビスベル：自分のアビスにマッハファイターを付与
-    var hasAbyssbell = G.myBattle.filter(function(x){ return x.id === 'abyssbell'; }).length > 0;
-    if(hasAbyssbell && ability === 'マッハファイター' && ABYSS_IDS.indexOf(c.id) >= 0) return true;
+  // ② 付与された能力チェック
+  if(c.grantedAbilities){
+    for(var i=0;i<c.grantedAbilities.length;i++){
+      if(c.grantedAbilities[i].ability===ability) return true;
+    }
   }
 
   return false;
@@ -1995,8 +2026,9 @@ var CARD_EFFECTS = {
             render();done();return;
           }
           log('w','💠 ティンパニ：ヨビニオン「'+found.name+'」を発見！バトルゾーンへ');
-          G.myBattle.push(makeCard(found, {summoned:true}));
-          myEnteredEff(found); checkJagaisuto(found);
+          var instance=makeCard(found, {summoned:true});
+          G.myBattle.push(instance);
+          myEnteredEff(instance); checkJagaisuto(instance);
           var rest=revealed.filter(function(x){return x.uid!==found.uid;});
           rest.sort(function(){return Math.random()-.5;});
           for(var i=0;i<rest.length;i++)G.myDeck.unshift(rest[i]);
@@ -2087,8 +2119,17 @@ var CARD_EFFECTS = {
     }
   },
 
-  /* ────── アビスベル=覇=ロード（召喚時効果なし、ターン終了時はendTurnで処理） ────── */
-  abyssbell: {permanent: true},
+  /* ────── アビスベル=覇=ロード ────── */
+  abyssbell: {
+    permanent: true,
+    onPermanent: function(self){
+      for(var i=0; i<G.myBattle.length; i++){
+        if(ABYSS_IDS.indexOf(G.myBattle[i].id) >= 0){
+          grantAbility(G.myBattle[i], 'マッハファイター', self.uid);
+        }
+      }
+    }
+  },
 
   /* ────── フェアリー･Re:ライフ ────── */
   fairy_life: {
@@ -2144,8 +2185,9 @@ var CARD_EFFECTS = {
             showCardSelectPopup('決断②','コスト4以下の闇クリーチャーを墓地から出す。',dark4,function(sel){
               if(!sel){log('w','🌑 決断②：スキップ');cb();return;}
               G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
-              G.myBattle.push(makeCard(sel, {summoned:true}));
-              log('w','🌑 決断②：「'+sel.name+'」を墓地から召喚！');myEnteredEff(sel);cb();
+              var instance=makeCard(sel, {summoned:true});
+              G.myBattle.push(instance);
+              log('w','🌑 決断②：「'+sel.name+'」を墓地から召喚！');myEnteredEff(instance, false, true);cb();
             },{skipLabel:'✋ 出さない'});
             return;
           } else {
@@ -2167,7 +2209,9 @@ var CARD_EFFECTS = {
           cb();
         });
       }
-      doKetsuChoice(1,function(){doKetsuChoice(2,function(){});});
+      doKetsuChoice(1,function(){doKetsuChoice(2,function(){
+        resolveEffectQueue();
+      });});
     }
   }
 
@@ -2217,7 +2261,7 @@ function executeNextEffect(){
   });
 }
 
-function myEnteredEff(c, isSummon){
+function myEnteredEff(c, isSummon, skipResolve){
   if(c.type==='creature'){
     G.turnCreatureCount=(G.turnCreatureCount||0)+1;
   }
@@ -2256,11 +2300,13 @@ function myEnteredEff(c, isSummon){
                 [{label:'⚡ ティンパニを自壊させる',cls:'yes'},{label:'✋ 発動しない',cls:'no'}],
                 function(ti){
                   if(ti===1){log('w','💠 ティンパニ：発動しない');done();return;}
+                  
                   G.myBattle=G.myBattle.filter(function(x){return x.uid!==tp.uid;});G.grave.push(tp);
                   log('w','💠 ティンパニ：自壊！相手はクリーチャーを1体選んで破壊する');
                   if(G.oppBattle.length>0){
                     showCardSelectPopup('ティンパニ効果','相手はクリーチャーを1体選んで破壊する。',G.oppBattle,function(sel){
                       if(!sel){done();return;}
+                      
                       G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==sel.uid;});G.oppGrave.push(sel);
                       log('l','💀 ティンパニ効果：「'+sel.name+'」破壊！');render();
                       done();
@@ -2297,9 +2343,9 @@ function myEnteredEff(c, isSummon){
     }
   }
 
-  // バーンエフェクト後にキュー解決（処理中でなければ）
+  // バーンエフェクト後にキュー解決（処理中でなければ・skipResolveでなければ）
   summonFx(c, function(){
-    if(!wasQueuing) resolveEffectQueue();
+    if(!wasQueuing && !skipResolve) resolveEffectQueue();
   }, c.type==='creature' ? 'creature' : 'spell');
 }
 function mySummonEff(c){
@@ -2347,10 +2393,10 @@ function checkJagaisuto(deckCreature){
     function(sel){
       if(!sel){log('w','🌑 ジャガイスト：墓地から出さない');G.jagaisutoUsed=false;return;}
       G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
-      // abyssRush:trueで出す（攻撃可・ターン終了時山札の下へ）
-      G.myBattle.push(makeCard(sel, {abyssRush:true, jagRush:true}));
+      var instance=makeCard(sel, {abyssRush:true, endOfTurn:'toBottomIfAttacked'});
+      G.myBattle.push(instance);
       log('w','🌑 ジャガイスト：「'+sel.name+'」を墓地から召喚！このターン相手プレイヤーへの攻撃可（ターン終了時山札の下）');
-      myEnteredEff(sel);
+      myEnteredEff(instance);
       render(); updateBtns();
     },
     {skipLabel:'✋ 出さない'}
@@ -2399,9 +2445,10 @@ function execMekleido5(isMe){
         if(!sel){log('w','🌑 メクレイド5：使わない');return;}
         log('w','🌑 メクレイド5：「'+sel.name+'」をタダ召喚！');
         if(sel.type==='creature'){
-          G.myBattle.push(makeCard(sel, {summoned:true}));
-          myEnteredEff(sel);
-          checkJagaisuto(sel);
+          var instance=makeCard(sel, {summoned:true});
+          G.myBattle.push(instance);
+          myEnteredEff(instance);
+          checkJagaisuto(instance);
         } else {
           G.grave.push(sel);
           spellEff(sel,true);
@@ -2693,6 +2740,7 @@ function doAttack(){
 
 function execAttack(c,target){
   c.tapped=true;
+  c.attacked=true; // 攻撃した事実を記録（アンタップされても保持）
   // アビスラッシュカードが攻撃完了時：tapped済みなのでendTurnで山札の下へ（フラグはabyssRushで管理）
   G_popupSourceUid=c.uid; // アタック中のカードを点滅表示
 
@@ -2904,10 +2952,13 @@ function battle(atk,def,isMe){
   var defSlayer = (def.eff && def.eff.indexOf('スレイヤー')!==-1);
 
   if(atk.pow>def.pow){
-    if(isMe){G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==def.uid;});G.oppGrave.push(def);log('w','✅「'+def.name+'」撃破！');fxFloat('勝利！','#ffcc00');
+    if(isMe){
+      
+      G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==def.uid;});G.oppGrave.push(def);log('w','✅「'+def.name+'」撃破！');fxFloat('勝利！','#ffcc00');
       if(defSlayer){G.myBattle=G.myBattle.filter(function(x){return x.uid!==atk.uid;});G.grave.push(atk);log('l','💀 スレイヤー：「'+atk.name+'」も破壊された');}
-    }
-    else{G.myBattle=G.myBattle.filter(function(x){return x.uid!==def.uid;});G.grave.push(def);log('l','💀「'+def.name+'」破壊された');
+    } else {
+      
+      G.myBattle=G.myBattle.filter(function(x){return x.uid!==def.uid;});G.grave.push(def);log('l','💀「'+def.name+'」破壊された');
       if(defSlayer){G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==atk.uid;});G.oppGrave.push(atk);log('w','⚡ スレイヤー：「'+atk.name+'」も破壊');}
     }
   } else if(atk.pow===def.pow){
@@ -2916,17 +2967,35 @@ function battle(atk,def,isMe){
     log('s','⚡ 相打ち！'); fxFloat('相打ち','#ffaa44');
   } else {
     if(isMe){
+      
       G.myBattle=G.myBattle.filter(function(x){return x.uid!==atk.uid;});G.grave.push(atk);log('l','💀「'+atk.name+'」が破壊された！');fxFloat('敗北','#ff4422');
       if(atkSlayer){G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==def.uid;});G.oppGrave.push(def);log('w','⚡ スレイヤー：「'+def.name+'」も道連れ！');}
-    }
-    else{G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==atk.uid;});G.oppGrave.push(atk);G.myBattle=G.myBattle.filter(function(x){return x.uid!==def.uid;});G.grave.push(def);
+    } else {
+      
+      G.oppBattle=G.oppBattle.filter(function(x){return x.uid!==atk.uid;});G.oppGrave.push(atk);G.myBattle=G.myBattle.filter(function(x){return x.uid!==def.uid;});G.grave.push(def);
       if(atkSlayer){log('l','💀 スレイヤー：「'+atk.name+'」は道連れで破壊');}
     }
   }
 }
 
+/* ══ 常在効果の適用 ══
+   render()のたびに呼ばれ、場のカードのonPermanentを全部実行する。
+   新しい常在付与カードはCARD_EFFECTSにonPermanentを追加するだけでOK。
+*/
+function applyPermanentEffects(){
+  // grantedAbilitiesをリセット
+  for(var i=0; i<G.myBattle.length; i++) G.myBattle[i].grantedAbilities=[];
+  for(var i=0; i<G.oppBattle.length; i++) G.oppBattle[i].grantedAbilities=[];
+  // 場のカードのonPermanentを実行
+  for(var i=0; i<G.myBattle.length; i++){
+    var eff=CARD_EFFECTS[G.myBattle[i].id];
+    if(eff && eff.onPermanent) eff.onPermanent(G.myBattle[i]);
+  }
+}
+
 /* ══ レンダリング ══ */
 function render(){
+  applyPermanentEffects();
   renderSh('msh',G.myShields); renderSh('osh',G.oppShields);
   var msc=0; for(var i=0;i<G.myShields.length;i++) if(G.myShields[i].intact) msc++;
   var osc=0; for(var i=0;i<G.oppShields.length;i++) if(G.oppShields[i].intact) osc++;
@@ -3050,7 +3119,7 @@ function renderBZ(id,cards,mine){
     }
     wrap.appendChild(d);
     var badges=mkBadges(c,mine);
-    if(badges) wrap.appendChild(badges);
+    if(badges) d.appendChild(badges);
     // 自分バトルゾーン・攻撃フェーズのみアタックボタンを表示
     if(mine && G.phase===4){
       var canAtk=canCardAttack(c);
@@ -3483,7 +3552,6 @@ var G_popupSourceUid=null; // 効果発動中のカードUID（黄色枠表示�
 /* カードから波紋を広げる（誘発エフェクト） */
 /* 召喚エフェクト：カード画像が前面にバーンと出る */
 function summonFx(c, callback, fxType){
-  // fxType: 'creature'(default) | 'spell' | 'entered'
   var fx=document.getElementById('summon-fx');
   var img=document.getElementById('summon-fx-img');
   var icon=document.getElementById('summon-fx-icon');
@@ -3500,7 +3568,7 @@ function summonFx(c, callback, fxType){
     icon.style.display='block';
   }
   void fx.offsetWidth;
-  fx.className= isSpell ? 'active spell' : 'active';
+  fx.className = isSpell ? 'active spell' : 'active';
   function onEnd(){
     fx.removeEventListener('animationend', onEnd);
     fx.className='';
@@ -3508,6 +3576,8 @@ function summonFx(c, callback, fxType){
   }
   fx.addEventListener('animationend', onEnd);
 }
+
+
 
 function flashCard(uid, callback){
   requestAnimationFrame(function(){
