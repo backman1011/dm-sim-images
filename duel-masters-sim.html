@@ -302,7 +302,34 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
   100%{transform:scale(1.3);opacity:0;}
 }
 
-/* ハンデスFx：カードが中央に出て墓地へ吸い込まれる */
+/* ドローFx：山札から手元にカードが飛んでくる */
+#draw-fx{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;z-index:9996;
+}
+#draw-fx-card{
+  width:100px;height:140px;border-radius:8px;object-fit:cover;
+  box-shadow:0 0 30px rgba(100,200,255,0.8),0 0 60px rgba(60,160,255,0.4);
+  opacity:0;
+  display:flex;align-items:center;justify-content:center;
+  font-size:3rem;background:linear-gradient(135deg,#0a1a2e,#0e2440);
+  border:2px solid rgba(100,200,255,0.5);
+  position:relative;
+}
+#draw-fx-card img{width:100%;height:100%;object-fit:cover;border-radius:6px;}
+/* 山札から飛んでくる */
+@keyframes drawSlideIn{
+  0%  {transform:translate(200px,-180px) scale(0.2);opacity:0;}
+  50% {transform:translate(0,0) scale(1.1);opacity:1;}
+  100%{transform:translate(0,0) scale(1.0);opacity:1;}
+}
+/* 手札へ吸い込まれる */
+@keyframes drawSlideOut{
+  0%  {transform:translate(0,0) scale(1.0);opacity:1;}
+  100%{transform:translate(0,280px) scale(0.15);opacity:0;}
+}
+#draw-fx-card.slide-in{animation:drawSlideIn 0.35s ease-out forwards;}
+#draw-fx-card.slide-out{animation:drawSlideOut 0.35s ease-in forwards;}
 #discard-fx{
   position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
   pointer-events:none;z-index:9997;
@@ -628,6 +655,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 <div id="scr-game">
 <div id="summon-fx"><img id="summon-fx-img" src="" alt=""><div id="summon-fx-icon"></div><div id="summon-fx-spell-ring"></div><div id="summon-fx-grave-ring"></div></div>
 <div id="discard-fx"><div id="discard-fx-card"></div></div>
+<div id="draw-fx"><div id="draw-fx-card"></div></div>
   <div id="test-badge">🔧 テストモード：マナコスト0</div>
   <div id="g-header">
     <button id="g-home-btn" onclick="goTitle()">🏠</button>
@@ -828,6 +856,13 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
    type: 'add'=緑 / 'fix'=赤 / 'chg'=青
 */
 var VERSION_LOG = [
+  {
+    ver: 'v0.11.7', date: '2026-05-14',
+    logs: [
+      {type:'add', text:'drawFx(card, callback)を追加。山札からカードが手元に飛んでくるアニメーション'},
+      {type:'chg', text:'myDraw(silent, fx, callback)にfx引数を追加。フェーズドロー時のみFxを再生'},
+    ]
+  },
   {
     ver: 'v0.11.6', date: '2026-05-14',
     logs: [
@@ -1442,10 +1477,21 @@ function initGame(){
 }
 
 /* ══ ドロー ══ */
-function myDraw(silent){
+/* myDraw(silent, fx, callback)
+   silent   : true=ログなし
+   fx       : true=ドローFxを再生
+   callback : Fx完了後のコールバック（fx=trueの時のみ使用）
+*/
+function myDraw(silent, fx, callback){
   if(G.myDeck.length===0){endGame(false,'山札切れ');return;}
   var c=G.myDeck.pop(); G.myHand.push(c);
   if(!silent) log('s','「'+c.name+'」をドロー');
+  if(fx){
+    render();
+    drawFx(c, callback || function(){});
+  } else {
+    if(callback) callback();
+  }
 }
 
 /* ══ フェイズ ══ */
@@ -1478,8 +1524,10 @@ function runPhase(){
     safeTimeout(function(){G.phase=1;runPhase();},400); return;
   }
   if(p===1){
-    myDraw(false); render();
-    safeTimeout(function(){G.phase=2;runPhase();},350); return;
+    myDraw(false, true, function(){
+      safeTimeout(function(){G.phase=2;runPhase();},200);
+    });
+    return;
   }
   if(p===2){setPhase('チャージ');setPBtn('スキップ▶');log('s','チャージ：手札からマナに1枚置けます');render();return;}
   if(p===3){setPhase('メイン');setPBtn('攻撃へ▶');log('s','メイン：召喚・呪文が使えます');render();return;}
@@ -4033,6 +4081,49 @@ function _doFx(c, callback, fxClass, defaultIcon){
 function enterFx(c, callback){ _doFx(c, callback, '',      '⚔️'); }
 function spellFx(c, callback){ _doFx(c, callback, 'spell', '💫'); }
 function graveFx(c, callback){ _doFx(c, callback, 'grave', '🌑'); }
+
+/* ドローFx：山札からカードが手元に飛んでくる */
+function drawFx(card, callback){
+  var cb = callback || function(){};
+  var el = document.getElementById('draw-fx-card');
+  if(!el){ cb(); return; }
+
+  el.className='';
+  el.innerHTML='';
+  if(card && CARD_IMAGES[card.id]){
+    var img = document.createElement('img');
+    img.src = CARD_IMAGES[card.id];
+    img.alt = card.name;
+    el.appendChild(img);
+  } else {
+    el.textContent = (card && card.icon) || '🃏';
+  }
+
+  void el.offsetWidth;
+  el.className = 'slide-in';
+
+  var inDone = false;
+  function onInEnd(e){
+    if(e.target !== el) return;
+    if(inDone) return;
+    inDone = true;
+    el.removeEventListener('animationend', onInEnd);
+    void el.offsetWidth;
+    el.className = 'slide-out';
+    function onOutEnd(e2){
+      if(e2.target !== el) return;
+      el.removeEventListener('animationend', onOutEnd);
+      el.className=''; el.innerHTML='';
+      cb();
+    }
+    el.addEventListener('animationend', onOutEnd);
+    setTimeout(function(){ el.className=''; el.innerHTML=''; cb(); }, 500);
+  }
+  el.addEventListener('animationend', onInEnd);
+  setTimeout(function(){
+    if(!inDone){ inDone=true; el.className=''; el.innerHTML=''; cb(); }
+  }, 500);
+}
 
 /* ハンデスFx：カードが中央に出て墓地へ吸い込まれる
    card : 捨てられるカード
