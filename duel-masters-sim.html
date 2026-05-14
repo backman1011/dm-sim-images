@@ -864,317 +864,83 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 */
 var VERSION_LOG = [
   {
-    ver: 'v0.12.1', date: '2026-05-15',
+    ver: 'v0.12.2', date: '2026-05-15',
     logs: [
-      {type:'fix', text:'封印ルールを正しく実装。コマンド種族が出ると封印解除・封印カードが墓地へ'},
-      {type:'chg', text:'makeCardにsealCards[]を追加。sealed状態はsealCards.length>0で自動計算'},
-      {type:'chg', text:'秩序の意志：自分の山札上1枚をsealCardsに追加する形に変更'},
-      {type:'fix', text:'runPhaseの誤った封印解除処理（ターン開始時）を削除'},
-      {type:'add', text:'封印カード枚数バッジ（🔒×N）をカード上に表示'},
+      {type:'add', text:'封印ルール実装。コマンド種族が出ると封印解除・封印カードを墓地へ'},
+      {type:'add', text:'封印カードを裏向きで右斜め下に重ねて表示'},
+      {type:'chg', text:'相手側カード・シールド・山札を180度回転（対面向き）'},
+      {type:'chg', text:'封印データをsealCards[]で管理。秩序の意志は山札上1枚を封印に使用'},
     ]
   },
   {
     ver: 'v0.12.0', date: '2026-05-15',
     logs: [
-      {type:'fix', text:'discardFx/drawFxのcb()二重呼び出しバグを修正。suckDone/outDoneフラグで1回のみ呼ばれるよう保証'},
-      {type:'fix', text:'myDrawをFx完了後に手札追加する順番に変更。Fx中に手札が増えないよう修正'},
-      {type:'fix', text:'テレスのハンデス後flashCardをdiscardFx後に移動。discardFx→flashCard→showYesNoの正しい順番に'},
-      {type:'fix', text:'onTurnStart/onTurnEndのキュートリガーでflashCardをスキップ。テレスのフラッシュ二重発生を修正'},
-      {type:'add', text:'showYesNo(title, desc, callback)を追加。横並びはい/いいえ＋場を見るボタン付きの汎用Yes/Noポップアップ'},
-      {type:'chg', text:'テレスのドロー選択をshowYesNoに変更'},
-      {type:'add', text:'drawFx(card, callback)を追加。山札からカードが手元に飛んでくるアニメーション'},
-      {type:'chg', text:'myDraw(silent, fx, callback)にfx引数を追加。フェーズドロー・テレスドロー時にFxを再生'},
-      {type:'chg', text:'ドローFxは裏面画像（cardback）を使用'},
-      {type:'add', text:'discardFx(card, who, callback)を追加。ハンデス時にカードが中央に出て墓地へ吸い込まれるアニメーション'},
-      {type:'chg', text:'discardFromHandでdiscardFxを呼ぶよう変更。全ハンデス処理で自動的に演出が入る'},
-      {type:'fix', text:'決断の効果処理順を修正。選択1回目→選択2回目→効果1→効果2→テキスト順で処理'},
-      {type:'chg', text:'相手側の山札・墓地・シールドの配置を修正。墓地/山札/シールドの順に変更'},
-      {type:'chg', text:'カードバック画像をclassic.jpgに差し替え（assets/images/cardback/classic.jpg）'},
-      {type:'chg', text:'山札にcardback画像を背景として設定。シールドimg要素にサイズ指定を追加'},
-    ]
-  },
-  {
-    ver: 'v0.11.8', date: '2026-05-14',
-    logs: [
-      {type:'chg', text:'カードバック画像をclassic.jpgに差し替え（assets/images/cardback/classic.jpg）'},
-    ]
-  },
-  {
-    ver: 'v0.11.7', date: '2026-05-14',
-    logs: [
-      {type:'add', text:'drawFx(card, callback)を追加。山札からカードが手元に飛んでくるアニメーション'},
-      {type:'chg', text:'myDraw(silent, fx, callback)にfx引数を追加。フェーズドロー時のみFxを再生'},
-    ]
-  },
-  {
-    ver: 'v0.11.6', date: '2026-05-14',
-    logs: [
-      {type:'add', text:'showYesNo(title, desc, callback)を追加。横並びはい/いいえ＋場を見るボタン付きの汎用Yes/Noポップアップ'},
-      {type:'chg', text:'テレスのドロー選択をshowYesNoに変更'},
-    ]
-  },
-  {
-    ver: 'v0.11.5', date: '2026-05-14',
-    logs: [
-      {type:'fix', text:'決断の効果処理をテキスト順（番号順）にソートして実行するよう修正。選択③→選択①でも①→③の順で処理される'},
-    ]
-  },
-  {
-    ver: 'v0.11.4', date: '2026-05-14',
-    logs: [
-      {type:'fix', text:'決断の効果処理順を修正。選択1回目→選択2回目→効果1→効果2の正しい順番に変更'},
-    ]
-  },
-  {
-    ver: 'v0.11.3', date: '2026-05-14',
-    logs: [
-      {type:'add', text:'discardFx(card, who, callback)を追加。ハンデス時にカードが中央に出て墓地へ吸い込まれるアニメーション'},
-      {type:'chg', text:'discardFromHandでdiscardFxを呼ぶよう変更。全ハンデス処理で自動的に演出が入る'},
-    ]
-  },
-  {
-    ver: 'v0.11.2', date: '2026-05-14',
-    logs: [
-      {type:'fix', text:'_doFxにanimationendのタイムアウトフォールバックを追加。1秒経過で強制完了しG_fxRunningをリセット'},
-      {type:'fix', text:'playCardDirectのenterFx前にrender()を追加。DOMにカードを生成してからFxを呼ぶよう修正'},
+      {type:'add', text:'drawFx：山札から手元にカードが飛んでくる演出（裏面画像）'},
+      {type:'add', text:'discardFx：ハンデス時にカードが中央に出て墓地へ吸い込まれる演出'},
+      {type:'add', text:'showYesNo：横並びはい/いいえ＋場を見るボタン付きの汎用ポップアップ'},
+      {type:'chg', text:'カードバック画像をclassic.jpgに変更。山札・シールドに反映'},
+      {type:'chg', text:'相手側の配置を墓地/山札/シールドの順に修正'},
+      {type:'fix', text:'決断：選択2回→テキスト順で効果処理する正しい順番に修正'},
+      {type:'fix', text:'テレスのフラッシュ・Fxの順番を修正（discardFx→flashCard→showYesNo）'},
+      {type:'fix', text:'drawFx/discardFxのcb()二重呼び出しバグを修正'},
     ]
   },
   {
     ver: 'v0.11.1', date: '2026-05-14',
     logs: [
-      {type:'add', text:'isLocked()関数を追加。G_popupWaiting/G_triggerResolving/G_fxRunningをまとめてロック判定'},
-      {type:'add', text:'G_fxRunningフラグを追加。Fxアニメーション中はUIをロック'},
-      {type:'fix', text:'nextPhase/endTurn/playCardDirect/doAttack/doAbyssRush系/doGraveSpell系/showCardActionPopup/showBZActionPopupにisLocked()ガードを追加'},
+      {type:'add', text:'isLocked()でFx・キュー・ポップアップ中のUI操作をブロック'},
     ]
   },
   {
     ver: 'v0.11.0', date: '2026-05-14',
     logs: [
-      {type:'chg', text:'discardFromHandにcallbackを追加。テレスのドロー選択をコールバック内で連鎖処理'},
-      {type:'chg', text:'テレスonTurnStart/マーダン/決断①/ベラドンナをdiscardFromHand(card,who,done)形式に変更'},
-      {type:'chg', text:'テレスのonDiscardを削除。discardFromHandで完結する設計に'},
-    ]
-  },
-  {
-    ver: 'v0.10.9', date: '2026-05-14',
-    logs: [
-      {type:'fix', text:'onTurnStart/onTurnEndをskipOrderSelect:trueでキューに積むよう変更。テレス2体でターン終了できない問題を修正'},
-    ]
-  },
-  {
-    ver: 'v0.10.8', date: '2026-05-14',
-    logs: [
-      {type:'add', text:'queueTriggerNext(label,uid,fn)を追加。キュー先頭に割り込み+skipOrderSelectで即実行'},
-      {type:'add', text:'queueTriggerにskipOrderSelectオプションを追加。_nextTriggerでtrueなら解決順選択をスキップ'},
-      {type:'chg', text:'テレスのonDiscardをqueueTriggerNextで復活。特別扱いコードを削除し汎用的な実装に'},
-      {type:'chg', text:'discardFromHandをシンプルに戻す。テレス特別扱いコードを削除'},
-    ]
-  },
-  {
-    ver: 'v0.10.7', date: '2026-05-14',
-    logs: [
-      {type:'chg', text:'テレスのドロー選択をdiscardFromHand内で連鎖処理する形に変更。UX簡略化として割り切り'},
-      {type:'chg', text:'テレスのonDiscardを削除。discardFromHandが直接テレス枚数分キューに積む'},
-    ]
-  },
-  {
-    ver: 'v0.10.6', date: '2026-05-14',
-    logs: [
-      {type:'chg', text:'テレスのドロー選択ポップアップをシンプルなはい/いいえに変更'},
-    ]
-  },
-  {
-    ver: 'v0.10.5', date: '2026-05-14',
-    logs: [
-      {type:'add', text:'CARD_EFFECTSに_labelを追加。fireEvent/myEnteredEffでキューラベルを自動で引くよう変更'},
-      {type:'chg', text:'全カードの効果に要約ラベルを追加（正確なテキストは後で差し替え予定）'},
-    ]
-  },
-  {
-    ver: 'v0.10.4', date: '2026-05-14',
-    logs: [
-      {type:'fix', text:'fireEventに_checkオプションを追加。キューに積む前に条件チェックできるよう変更'},
-      {type:'fix', text:'ジャガイストにonOtherEntered_checkを追加。mekleido/yobinion以外ではキューに積まれないよう修正'},
-      {type:'fix', text:'discardFromHand内のresolveTriggerQueue呼び出しを削除。done()後に自動解決に任せる'},
-    ]
-  },
-  {
-    ver: 'v0.10.3', date: '2026-05-14',
-    logs: [
-      {type:'add', text:'discardFromHand(card, who)を追加。手札から捨てる処理を一元化しfireEvent("onDiscard")を発火'},
-      {type:'add', text:'テレスにonDiscard（相手が捨てた時ドロー）・onPermanent（手札0枚でパワー+5000）を実装'},
-      {type:'add', text:'makeCardにbasePowを追加。applyPermanentEffectsでpowをbasePowにリセットしてからonPermanentを適用'},
-      {type:'chg', text:'マーダン・ジャガイスト・決断①・ベラドンナのハンデスをdiscardFromHandに統一'},
-    ]
-  },
-  {
-    ver: 'v0.10.2', date: '2026-05-14',
-    logs: [
-      {type:'fix', text:'テレスコ=テレスの相手ターン開始時効果をfireEvent("onTurnStart")経由に移行。手動ループを廃止'},
-      {type:'chg', text:'oppTurnをoppTurnMain()に分割。ターン開始誘発→resolveTriggerQueue→ドロー・チャージ・召喚の順に整理'},
-    ]
-  },
-  {
-    ver: 'v0.10.1', date: '2026-05-14',
-    logs: [
-      {type:'fix', text:'execMekleido5にcallback引数を追加。メクレイド完了後にdone()が呼ばれるよう修正'},
-      {type:'fix', text:'ジャガイストonEnteredでexecMekleido5(true,done)と渡すよう変更。メクレイド中に裏でキューポップアップが出る問題を修正'},
+      {type:'add', text:'discardFromHand：手札捨て処理を一元化。テレスのドロー選択を連鎖処理'},
+      {type:'add', text:'queueTriggerNext：キュー先頭割り込み＋即実行'},
+      {type:'add', text:'skipOrderSelect：ターン開始/終了効果など解決順選択をスキップ'},
+      {type:'fix', text:'テレス2体でターン終了できない問題を修正'},
     ]
   },
   {
     ver: 'v0.10.0', date: '2026-05-14',
     logs: [
-      {type:'add', text:'fireEvent(eventType, eventData)を追加。場のカードを自動スキャンしてキューに積むイベントバス'},
-      {type:'add', text:'ジャガイストにonOtherEnteredを実装。checkJagaisuto関数を廃止'},
-      {type:'chg', text:'endTurnのonTurnEnd手動ループをfireEvent("onTurnEnd")に置き換え'},
-      {type:'chg', text:'oppSummonEffをfireEvent("onOppSummon")ラッパーに変更'},
-      {type:'chg', text:'全CARD_EFFECTSのonTurnEnd/onOppSummonシグネチャを(c,ev,done)に統一'},
-      {type:'chg', text:'メクレイド・ヨビニオンのcheckJagaisuto手動呼び出しを削除'},
-    ]
-  },
-  {
-    ver: 'v0.9.3', date: '2026-05-14',
-    logs: [
-      {type:'fix', text:'キューのネスト問題を根本修正。resolveTriggerQueueを解決中に呼んでも積むだけにし、done()後に自動で続きが処理されるよう変更'},
-      {type:'chg', text:'_nextTrigger/_execTriggerに分離。G_triggerResolvingはtrueのまま連鎖解決する設計に'},
-      {type:'chg', text:'myEnteredEffのskipResolve引数を廃止。常にresolveTriggerQueueを呼ぶ形に統一'},
-      {type:'fix', text:'アビスベルonTurnEndのパッチ的なG_triggerResolving=true操作を削除。done()のみで制御'},
-      {type:'fix', text:'決断②のskipResolve・末尾resolveTriggerQueue呼び出しを削除'},
-    ]
-  },
-  {
-    ver: 'v0.9.2', date: '2026-05-14',
-    logs: [
-      {type:'fix', text:'アビスベル効果で出したクリーチャーの出た時効果（マクア等）が選択前に相手ターンになる問題を修正。done()をFxコールバック内に移動し、出た時効果が全解決してからターン終了するよう変更'},
-    ]
-  },
-  {
-    ver: 'v0.9.1', date: '2026-05-14',
-    logs: [
-      {type:'fix', text:'アビスベル効果で墓地/マナからクリーチャーを出した時に出た時効果が発動しない問題を修正。Fx前にrender()を呼ぶことでDOM上にカードを先に生成するよう変更'},
+      {type:'add', text:'fireEvent：場のカードを自動スキャンしてキューに積むイベントバス'},
+      {type:'add', text:'ジャガイストのonOtherEntered実装。checkJagaisuto廃止'},
+      {type:'add', text:'テレスのonTurnStart/onPermanent/ハンデス後ドロー実装'},
+      {type:'add', text:'discardFromHand追加。全ハンデス処理を一元化'},
+      {type:'fix', text:'キューのネスト問題を根本修正。done()後に自動で連鎖解決'},
+      {type:'fix', text:'アビスベル効果で出したカードの効果が発動しない問題を修正'},
     ]
   },
   {
     ver: 'v0.9.0', date: '2026-05-14',
     logs: [
-      {type:'add', text:'playType定義を追加（summon/abyssRush/mekleido/reani/yobinion/abyssbell/jagaisuto）'},
-      {type:'add', text:'isSummonPlay(playType)関数を追加。召喚扱いか否かを一元判定'},
-      {type:'chg', text:'myEnteredEff(c, isSummon)をmyEnteredEff(c, playType)に変更。旧boolean引数は後方互換で変換'},
-      {type:'chg', text:'各呼び出し箇所を正しいplayTypeに更新（doAbyssRushCard/doAbyssRush/execMekleido5/checkJagaisuto/アビスベルonTurnEnd/決断②/ヨビニオン）'},
-      {type:'chg', text:'spellEffをspellFxに切り替え。各Fx関数(enterFx/spellFx/graveFx)を呼び出し箇所で使い分けるよう変更'},
+      {type:'add', text:'playType定義（summon/abyssRush/mekleido/reani/yobinion/abyssbell/jagaisuto）'},
+      {type:'add', text:'enterFx/spellFx/graveFxの3エフェクト関数を追加'},
+      {type:'chg', text:'myEnteredEff(c, playType)に変更。召喚・踏み倒しを正しく区別'},
     ]
   },
   {
     ver: 'v0.8.0', date: '2026-05-14',
     logs: [
-      {type:'add', text:'enterFx/spellFx/graveFxの3エフェクト関数を追加。場に出る（白）・呪文（青）・墓地から（紫）で演出を分離'},
-      {type:'add', text:'graveFx用の紫グロー・紫リングCSSを追加（#summon-fx.grave）'},
-      {type:'chg', text:'playFxは後方互換ラッパーとして残存。内部でenterFx/spellFxに委譲'},
-    ]
-  },
-  {
-    ver: 'v0.7.0', date: '2026-05-14',
-    logs: [
-      {type:'chg', text:'summonFxをplayFxにリネーム。召喚・呪文両方のエフェクトを担う関数として名称を整理'},
-      {type:'chg', text:'myEnteredEffからplayFxを切り離し。召喚エフェクトは呼び出し側で完結させてからキューに積む設計に変更'},
-      {type:'chg', text:'G_triggerResolvingフラグを追加。キュー解決中の二重発動を防止'},
-      {type:'fix', text:'アビスベル効果でドミー等を出した時に召喚エフェクトと効果エフェクトが同時に出る問題を修正'},
-      {type:'chg', text:'doSummon/doChargeを削除（デッドコード）'},
-    ]
-  },
-  {
-    ver: 'v0.6.0', date: '2026-05-14',
-    logs: [
-      {type:'chg', text:'G_effectQueueをG_triggerQueueに統一。出た時効果・ターン終了時効果を同一キューで管理'},
-      {type:'chg', text:'endTurnをG_triggerQueueベースに全面書き直し。非同期処理が正しく順番に解決されるよう修正'},
-      {type:'chg', text:'フットレス・アビスベルのターン終了時効果をCARD_EFFECTSのonTurnEndに移行。endTurnのベタ書きを廃止'},
-      {type:'chg', text:'アビスラッシュ送還もG_triggerQueueに積む形に変更。解決時点での場の確認を追加'},
-      {type:'fix', text:'アビスベル効果でドミー・マーダン等を出しても出た時効果が発動しない問題を修正'},
-      {type:'fix', text:'決断②リアニ後に出た時効果のポップアップが2回目選択中に重なる問題を修正'},
-    ]
-  },
-  {
-    ver: 'v0.5.0', date: '2026-05-14',
-    logs: [
-      {type:'add', text:'常在効果付与システムを実装（grantAbility / applyPermanentEffects）'},
-      {type:'chg', text:'アビスベルのMF付与をrender時に再計算する常在効果方式に変更（onPermanent）'},
-      {type:'chg', text:'makeCardファクトリ関数にgrantedAbilities・attacked・endOfTurnフラグを追加'},
-      {type:'chg', text:'jagRushフラグを廃止しendOfTurn/attackedフラグで管理するよう変更'},
-      {type:'fix', text:'ヨビニオン・メクレイド・リアニ等でmakeCardのinstanceではなく元オブジェクトをmyEnteredEffに渡していたバグを修正'},
-    ]
-  },
-  {
-    ver: 'v0.4.1', date: '2025-05-14',
-    logs: [
-      {type:'fix', text:'onEntered/onSummonにdoneコールバックを追加し、効果処理後にふわふわが残る問題を根本修正'},
-      {type:'chg', text:'G_effectDone/callEffectDoneIfPendingを廃止し設計をシンプル化'},
-    ]
-  },
-  {
-    ver: 'v0.4.0', date: '2025-05-14',
-    logs: [
-      {type:'add', text:'誘発効果キューシステムを実装（複数同時誘発時に解決順を選択可能）'},
-      {type:'fix', text:'ティンパニ＋ベラドンナ同時誘発時に効果が無視される問題を修正'},
-    ]
-  },
-  {
-    ver: 'v0.3.2', date: '2025-05-14',
-    logs: [
-      {type:'add', text:'召喚酔いカードにヒヨコ🐤2匹が周回する演出を追加'},
-      {type:'chg', text:'召喚酔い中のカードの暗転エフェクトを廃止'},
-      {type:'fix', text:'ヒヨコの回転中心・位置ずれを修正'},
-    ]
-  },
-  {
-    ver: 'v0.3.1', date: '2025-05-14',
-    logs: [
-      {type:'add', text:'常在型能力持ちカードに！バッジを追加（CARD_EFFECTSのpermanentフラグで管理）'},
-      {type:'fix', text:'誘発型能力のないカード召喚時に点滅エフェクトが出る問題を修正'},
-      {type:'fix', text:'マーダンロウ・フットレス召喚後に点滅が消えない問題を修正'},
+      {type:'add', text:'playFx：召喚・呪文エフェクト統一関数'},
+      {type:'add', text:'誘発効果キューシステム実装。複数同時誘発時に解決順を選択可能'},
+      {type:'add', text:'常在効果付与システム実装（grantAbility/applyPermanentEffects）'},
     ]
   },
   {
     ver: 'v0.3.0', date: '2025-05-14',
     logs: [
       {type:'add', text:'召喚・呪文・場に出る、全アクションにバーンエフェクト追加'},
-      {type:'chg', text:'常在型能力エフェクトをパルス点滅 → バーンエフェクトに変更'},
-    ]
-  },
-  {
-    ver: 'v0.2.2', date: '2025-05-14',
-    logs: [
-      {type:'fix', text:'誘発型能力のないカード（フットレス・テレスコ等）召喚時に点滅エフェクトが出る問題を修正'},
-    ]
-  },
-  {
-    ver: 'v0.2.1', date: '2025-05-14',
-    logs: [
-      {type:'fix', text:'マーダンロウ・フットレス召喚後に点滅エフェクトが消えない問題を修正'},
-    ]
-  },
-  {
-    ver: 'v0.2.0', date: '2025-05-13',
-    logs: [
-      {type:'add', text:'召喚・呪文・場に出る、全アクションにバーンエフェクト追加'},
-      {type:'fix', text:'ティンパニ召喚時にエフェクトが出ない問題を修正'},
-      {type:'fix', text:'ティンパニ onSummon が2回発火する問題を修正'},
-    ]
-  },
-  {
-    ver: 'v0.1.1', date: '2025-05-13',
-    logs: [
-      {type:'fix', text:'アビスラッシュをプレイヤーのみ攻撃可に修正'},
-      {type:'fix', text:'ジャガイスト：攻撃したらターン終了時山札の下に修正'},
-      {type:'fix', text:'秩序の意志：次の自分ターン開始時に封印解除'},
-      {type:'chg', text:'onSummon をコールバックチェーンで順番実行するよう統合'},
+      {type:'add', text:'召喚酔いカードにヒヨコ🐤周回演出を追加'},
+      {type:'add', text:'常在型能力持ちカードに！バッジを追加'},
     ]
   },
   {
     ver: 'v0.1.0', date: '2025-05-13',
     logs: [
       {type:'add', text:'デッキ管理・保存機能'},
-      {type:'add', text:'墓地詠唱・アビスラッシュ UI'},
-      {type:'chg', text:'バトルゾーンホバーでアタックボタン表示'},
+      {type:'add', text:'墓地詠唱・アビスラッシュUI'},
+      {type:'add', text:'バトルゾーンホバーでアタックボタン表示'},
     ]
   },
 ];
