@@ -302,6 +302,42 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
   100%{transform:scale(1.3);opacity:0;}
 }
 
+/* ハンデスFx：カードが中央に出て墓地へ吸い込まれる */
+#discard-fx{
+  position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+  pointer-events:none;z-index:9997;
+}
+#discard-fx-card{
+  width:120px;height:168px;border-radius:8px;object-fit:cover;
+  box-shadow:0 0 40px rgba(255,80,80,0.9),0 0 80px rgba(200,40,40,0.5);
+  opacity:0;transform:scale(0.3);
+  display:flex;align-items:center;justify-content:center;
+  font-size:3.5rem;background:linear-gradient(135deg,#1e0a0a,#3a1010);
+  border:2px solid rgba(255,80,80,0.5);
+  position:relative;
+}
+#discard-fx-card img{width:100%;height:100%;object-fit:cover;border-radius:6px;}
+/* 出現アニメーション */
+@keyframes discardAppear{
+  0%  {transform:scale(0.2);opacity:0;}
+  40% {transform:scale(1.1);opacity:1;}
+  70% {transform:scale(1.0);opacity:1;}
+  100%{transform:scale(1.0);opacity:1;}
+}
+/* 吸い込みアニメーション（相手墓地：左上方向） */
+@keyframes discardSuckOpp{
+  0%  {transform:scale(1.0);opacity:1;}
+  100%{transform:scale(0.1) translate(-350px,-300px);opacity:0;}
+}
+/* 吸い込みアニメーション（自分墓地：右下方向） */
+@keyframes discardSuckMy{
+  0%  {transform:scale(1.0);opacity:1;}
+  100%{transform:scale(0.1) translate(350px,350px);opacity:0;}
+}
+#discard-fx-card.appear{animation:discardAppear 0.4s ease-out forwards;}
+#discard-fx-card.suck-opp{animation:discardSuckOpp 0.45s ease-in forwards;}
+#discard-fx-card.suck-my{animation:discardSuckMy 0.45s ease-in forwards;}
+
 
 .card.tap{transform:rotate(18deg);}
 .card.tap.sel{transform:rotate(18deg) translateY(-4px) scale(1.06);}
@@ -413,6 +449,20 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 #eff-popup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:300;align-items:center;justify-content:center;}
 #eff-popup.open{display:flex;}
 #eff-popup-inner{background:#0e0c1e;border:2px solid var(--gold);border-radius:12px;padding:20px 18px;max-width:300px;width:88%;display:flex;flex-direction:column;align-items:center;gap:12px;box-shadow:0 0 40px rgba(255,204,0,.3);animation:mdIn .18s ease;}
+
+/* はい/いいえポップアップ */
+#yn-popup{display:none;position:fixed;inset:0;background:rgba(0,0,0,.78);z-index:301;align-items:center;justify-content:center;}
+#yn-popup.open{display:flex;}
+#yn-popup-inner{background:#0e0c1e;border:2px solid var(--gold);border-radius:12px;padding:18px 18px;max-width:280px;width:88%;display:flex;flex-direction:column;align-items:center;gap:10px;box-shadow:0 0 40px rgba(255,204,0,.3);animation:mdIn .18s ease;}
+#yn-title{color:var(--gold);font-size:.75rem;font-weight:700;text-align:center;}
+#yn-desc{color:rgba(255,255,255,.8);font-size:.65rem;text-align:center;white-space:pre-wrap;}
+#yn-btns{display:flex;gap:10px;width:100%;}
+#yn-btns button{flex:1;padding:9px 0;border-radius:8px;font-size:.7rem;font-weight:700;cursor:pointer;font-family:'Noto Sans JP',sans-serif;transition:background .15s;}
+#yn-yes{background:rgba(80,200,80,.15);border:1px solid #4c4;color:#4c4;}
+#yn-yes:hover{background:rgba(80,200,80,.3);}
+#yn-no{background:rgba(200,80,80,.15);border:1px solid #c44;color:#c44;}
+#yn-no:hover{background:rgba(200,80,80,.3);}
+#yn-fieldview{padding:5px 20px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.2);border-radius:8px;color:rgba(255,255,255,.5);font-size:.58rem;cursor:pointer;font-family:'Noto Sans JP',sans-serif;width:100%;}
 #eff-title{font-size:.82rem;font-weight:900;color:var(--gold);text-align:center;letter-spacing:.06em;}
 #eff-desc{font-size:.68rem;color:#bbb;text-align:center;line-height:1.6;white-space:pre-wrap;}
 #eff-btns{display:flex;flex-direction:column;gap:8px;width:100%;}
@@ -577,6 +627,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 <!-- ゲーム -->
 <div id="scr-game">
 <div id="summon-fx"><img id="summon-fx-img" src="" alt=""><div id="summon-fx-icon"></div><div id="summon-fx-spell-ring"></div><div id="summon-fx-grave-ring"></div></div>
+<div id="discard-fx"><div id="discard-fx-card"></div></div>
   <div id="test-badge">🔧 テストモード：マナコスト0</div>
   <div id="g-header">
     <button id="g-home-btn" onclick="goTitle()">🏠</button>
@@ -602,11 +653,11 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
         <div class="mzone" id="omna"></div>
       </div>
 
-      <!-- 相手シールド＋墓地ボタン -->
+      <!-- 相手シールド＋山札＋墓地 -->
       <div class="field-row row-oshield">
-        <div class="shields" id="osh"></div>
-        <div class="deck-pile" id="opp-deck-pile"><div class="deck-card thick-3" id="opp-deck-card"><span class="deck-num" id="odcnt">40</span></div></div>
         <button class="grave-btn opp-grave" onclick="showGraveModal('opp')">🪦<span id="ogcnt">0</span></button>
+        <div class="deck-pile" id="opp-deck-pile"><div class="deck-card thick-3" id="opp-deck-card"><span class="deck-num" id="odcnt">40</span></div></div>
+        <div class="shields" id="osh"></div>
       </div>
 
       <!-- 相手バトルゾーン -->
@@ -726,6 +777,19 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
   </div>
 </div>
 
+<!-- はい/いいえポップアップ -->
+<div id="yn-popup">
+  <div id="yn-popup-inner">
+    <div id="yn-title"></div>
+    <div id="yn-desc"></div>
+    <div id="yn-btns">
+      <button id="yn-yes" onclick="confirmYesNo(true)">はい</button>
+      <button id="yn-no" onclick="confirmYesNo(false)">いいえ</button>
+    </div>
+    <button id="yn-fieldview" onclick="openFieldViewModal()">👁 場を見る</button>
+  </div>
+</div>
+
 <!-- カード選択ポップアップ -->
 <div id="card-sel-popup" onclick="event.stopPropagation()">
   <div id="csp-inner">
@@ -765,27 +829,91 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 */
 var VERSION_LOG = [
   {
-    ver: 'v1.10.7', date: '2026-05-14',
+    ver: 'v0.11.6', date: '2026-05-14',
+    logs: [
+      {type:'add', text:'showYesNo(title, desc, callback)を追加。横並びはい/いいえ＋場を見るボタン付きの汎用Yes/Noポップアップ'},
+      {type:'chg', text:'テレスのドロー選択をshowYesNoに変更'},
+    ]
+  },
+  {
+    ver: 'v0.11.5', date: '2026-05-14',
+    logs: [
+      {type:'fix', text:'決断の効果処理をテキスト順（番号順）にソートして実行するよう修正。選択③→選択①でも①→③の順で処理される'},
+    ]
+  },
+  {
+    ver: 'v0.11.4', date: '2026-05-14',
+    logs: [
+      {type:'fix', text:'決断の効果処理順を修正。選択1回目→選択2回目→効果1→効果2の正しい順番に変更'},
+    ]
+  },
+  {
+    ver: 'v0.11.3', date: '2026-05-14',
+    logs: [
+      {type:'add', text:'discardFx(card, who, callback)を追加。ハンデス時にカードが中央に出て墓地へ吸い込まれるアニメーション'},
+      {type:'chg', text:'discardFromHandでdiscardFxを呼ぶよう変更。全ハンデス処理で自動的に演出が入る'},
+    ]
+  },
+  {
+    ver: 'v0.11.2', date: '2026-05-14',
+    logs: [
+      {type:'fix', text:'_doFxにanimationendのタイムアウトフォールバックを追加。1秒経過で強制完了しG_fxRunningをリセット'},
+      {type:'fix', text:'playCardDirectのenterFx前にrender()を追加。DOMにカードを生成してからFxを呼ぶよう修正'},
+    ]
+  },
+  {
+    ver: 'v0.11.1', date: '2026-05-14',
+    logs: [
+      {type:'add', text:'isLocked()関数を追加。G_popupWaiting/G_triggerResolving/G_fxRunningをまとめてロック判定'},
+      {type:'add', text:'G_fxRunningフラグを追加。Fxアニメーション中はUIをロック'},
+      {type:'fix', text:'nextPhase/endTurn/playCardDirect/doAttack/doAbyssRush系/doGraveSpell系/showCardActionPopup/showBZActionPopupにisLocked()ガードを追加'},
+    ]
+  },
+  {
+    ver: 'v0.11.0', date: '2026-05-14',
+    logs: [
+      {type:'chg', text:'discardFromHandにcallbackを追加。テレスのドロー選択をコールバック内で連鎖処理'},
+      {type:'chg', text:'テレスonTurnStart/マーダン/決断①/ベラドンナをdiscardFromHand(card,who,done)形式に変更'},
+      {type:'chg', text:'テレスのonDiscardを削除。discardFromHandで完結する設計に'},
+    ]
+  },
+  {
+    ver: 'v0.10.9', date: '2026-05-14',
+    logs: [
+      {type:'fix', text:'onTurnStart/onTurnEndをskipOrderSelect:trueでキューに積むよう変更。テレス2体でターン終了できない問題を修正'},
+    ]
+  },
+  {
+    ver: 'v0.10.8', date: '2026-05-14',
+    logs: [
+      {type:'add', text:'queueTriggerNext(label,uid,fn)を追加。キュー先頭に割り込み+skipOrderSelectで即実行'},
+      {type:'add', text:'queueTriggerにskipOrderSelectオプションを追加。_nextTriggerでtrueなら解決順選択をスキップ'},
+      {type:'chg', text:'テレスのonDiscardをqueueTriggerNextで復活。特別扱いコードを削除し汎用的な実装に'},
+      {type:'chg', text:'discardFromHandをシンプルに戻す。テレス特別扱いコードを削除'},
+    ]
+  },
+  {
+    ver: 'v0.10.7', date: '2026-05-14',
     logs: [
       {type:'chg', text:'テレスのドロー選択をdiscardFromHand内で連鎖処理する形に変更。UX簡略化として割り切り'},
       {type:'chg', text:'テレスのonDiscardを削除。discardFromHandが直接テレス枚数分キューに積む'},
     ]
   },
   {
-    ver: 'v1.10.6', date: '2026-05-14',
+    ver: 'v0.10.6', date: '2026-05-14',
     logs: [
       {type:'chg', text:'テレスのドロー選択ポップアップをシンプルなはい/いいえに変更'},
     ]
   },
   {
-    ver: 'v1.10.5', date: '2026-05-14',
+    ver: 'v0.10.5', date: '2026-05-14',
     logs: [
       {type:'add', text:'CARD_EFFECTSに_labelを追加。fireEvent/myEnteredEffでキューラベルを自動で引くよう変更'},
       {type:'chg', text:'全カードの効果に要約ラベルを追加（正確なテキストは後で差し替え予定）'},
     ]
   },
   {
-    ver: 'v1.10.4', date: '2026-05-14',
+    ver: 'v0.10.4', date: '2026-05-14',
     logs: [
       {type:'fix', text:'fireEventに_checkオプションを追加。キューに積む前に条件チェックできるよう変更'},
       {type:'fix', text:'ジャガイストにonOtherEntered_checkを追加。mekleido/yobinion以外ではキューに積まれないよう修正'},
@@ -793,7 +921,7 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.10.3', date: '2026-05-14',
+    ver: 'v0.10.3', date: '2026-05-14',
     logs: [
       {type:'add', text:'discardFromHand(card, who)を追加。手札から捨てる処理を一元化しfireEvent("onDiscard")を発火'},
       {type:'add', text:'テレスにonDiscard（相手が捨てた時ドロー）・onPermanent（手札0枚でパワー+5000）を実装'},
@@ -802,21 +930,21 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.10.2', date: '2026-05-14',
+    ver: 'v0.10.2', date: '2026-05-14',
     logs: [
       {type:'fix', text:'テレスコ=テレスの相手ターン開始時効果をfireEvent("onTurnStart")経由に移行。手動ループを廃止'},
       {type:'chg', text:'oppTurnをoppTurnMain()に分割。ターン開始誘発→resolveTriggerQueue→ドロー・チャージ・召喚の順に整理'},
     ]
   },
   {
-    ver: 'v1.10.1', date: '2026-05-14',
+    ver: 'v0.10.1', date: '2026-05-14',
     logs: [
       {type:'fix', text:'execMekleido5にcallback引数を追加。メクレイド完了後にdone()が呼ばれるよう修正'},
       {type:'fix', text:'ジャガイストonEnteredでexecMekleido5(true,done)と渡すよう変更。メクレイド中に裏でキューポップアップが出る問題を修正'},
     ]
   },
   {
-    ver: 'v1.10.0', date: '2026-05-14',
+    ver: 'v0.10.0', date: '2026-05-14',
     logs: [
       {type:'add', text:'fireEvent(eventType, eventData)を追加。場のカードを自動スキャンしてキューに積むイベントバス'},
       {type:'add', text:'ジャガイストにonOtherEnteredを実装。checkJagaisuto関数を廃止'},
@@ -827,7 +955,7 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.9.3', date: '2026-05-14',
+    ver: 'v0.9.3', date: '2026-05-14',
     logs: [
       {type:'fix', text:'キューのネスト問題を根本修正。resolveTriggerQueueを解決中に呼んでも積むだけにし、done()後に自動で続きが処理されるよう変更'},
       {type:'chg', text:'_nextTrigger/_execTriggerに分離。G_triggerResolvingはtrueのまま連鎖解決する設計に'},
@@ -837,19 +965,19 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.9.2', date: '2026-05-14',
+    ver: 'v0.9.2', date: '2026-05-14',
     logs: [
       {type:'fix', text:'アビスベル効果で出したクリーチャーの出た時効果（マクア等）が選択前に相手ターンになる問題を修正。done()をFxコールバック内に移動し、出た時効果が全解決してからターン終了するよう変更'},
     ]
   },
   {
-    ver: 'v1.9.1', date: '2026-05-14',
+    ver: 'v0.9.1', date: '2026-05-14',
     logs: [
       {type:'fix', text:'アビスベル効果で墓地/マナからクリーチャーを出した時に出た時効果が発動しない問題を修正。Fx前にrender()を呼ぶことでDOM上にカードを先に生成するよう変更'},
     ]
   },
   {
-    ver: 'v1.9.0', date: '2026-05-14',
+    ver: 'v0.9.0', date: '2026-05-14',
     logs: [
       {type:'add', text:'playType定義を追加（summon/abyssRush/mekleido/reani/yobinion/abyssbell/jagaisuto）'},
       {type:'add', text:'isSummonPlay(playType)関数を追加。召喚扱いか否かを一元判定'},
@@ -859,7 +987,7 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.8.0', date: '2026-05-14',
+    ver: 'v0.8.0', date: '2026-05-14',
     logs: [
       {type:'add', text:'enterFx/spellFx/graveFxの3エフェクト関数を追加。場に出る（白）・呪文（青）・墓地から（紫）で演出を分離'},
       {type:'add', text:'graveFx用の紫グロー・紫リングCSSを追加（#summon-fx.grave）'},
@@ -867,7 +995,7 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.7.0', date: '2026-05-14',
+    ver: 'v0.7.0', date: '2026-05-14',
     logs: [
       {type:'chg', text:'summonFxをplayFxにリネーム。召喚・呪文両方のエフェクトを担う関数として名称を整理'},
       {type:'chg', text:'myEnteredEffからplayFxを切り離し。召喚エフェクトは呼び出し側で完結させてからキューに積む設計に変更'},
@@ -877,7 +1005,7 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.6.0', date: '2026-05-14',
+    ver: 'v0.6.0', date: '2026-05-14',
     logs: [
       {type:'chg', text:'G_effectQueueをG_triggerQueueに統一。出た時効果・ターン終了時効果を同一キューで管理'},
       {type:'chg', text:'endTurnをG_triggerQueueベースに全面書き直し。非同期処理が正しく順番に解決されるよう修正'},
@@ -888,7 +1016,7 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.5.0', date: '2026-05-14',
+    ver: 'v0.5.0', date: '2026-05-14',
     logs: [
       {type:'add', text:'常在効果付与システムを実装（grantAbility / applyPermanentEffects）'},
       {type:'chg', text:'アビスベルのMF付与をrender時に再計算する常在効果方式に変更（onPermanent）'},
@@ -898,21 +1026,21 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.4.1', date: '2025-05-14',
+    ver: 'v0.4.1', date: '2025-05-14',
     logs: [
       {type:'fix', text:'onEntered/onSummonにdoneコールバックを追加し、効果処理後にふわふわが残る問題を根本修正'},
       {type:'chg', text:'G_effectDone/callEffectDoneIfPendingを廃止し設計をシンプル化'},
     ]
   },
   {
-    ver: 'v1.4.0', date: '2025-05-14',
+    ver: 'v0.4.0', date: '2025-05-14',
     logs: [
       {type:'add', text:'誘発効果キューシステムを実装（複数同時誘発時に解決順を選択可能）'},
       {type:'fix', text:'ティンパニ＋ベラドンナ同時誘発時に効果が無視される問題を修正'},
     ]
   },
   {
-    ver: 'v1.3.2', date: '2025-05-14',
+    ver: 'v0.3.2', date: '2025-05-14',
     logs: [
       {type:'add', text:'召喚酔いカードにヒヨコ🐤2匹が周回する演出を追加'},
       {type:'chg', text:'召喚酔い中のカードの暗転エフェクトを廃止'},
@@ -920,7 +1048,7 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.3.1', date: '2025-05-14',
+    ver: 'v0.3.1', date: '2025-05-14',
     logs: [
       {type:'add', text:'常在型能力持ちカードに！バッジを追加（CARD_EFFECTSのpermanentフラグで管理）'},
       {type:'fix', text:'誘発型能力のないカード召喚時に点滅エフェクトが出る問題を修正'},
@@ -928,26 +1056,26 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.3.0', date: '2025-05-14',
+    ver: 'v0.3.0', date: '2025-05-14',
     logs: [
       {type:'add', text:'召喚・呪文・場に出る、全アクションにバーンエフェクト追加'},
       {type:'chg', text:'常在型能力エフェクトをパルス点滅 → バーンエフェクトに変更'},
     ]
   },
   {
-    ver: 'v1.2.2', date: '2025-05-14',
+    ver: 'v0.2.2', date: '2025-05-14',
     logs: [
       {type:'fix', text:'誘発型能力のないカード（フットレス・テレスコ等）召喚時に点滅エフェクトが出る問題を修正'},
     ]
   },
   {
-    ver: 'v1.2.1', date: '2025-05-14',
+    ver: 'v0.2.1', date: '2025-05-14',
     logs: [
       {type:'fix', text:'マーダンロウ・フットレス召喚後に点滅エフェクトが消えない問題を修正'},
     ]
   },
   {
-    ver: 'v1.2.0', date: '2025-05-13',
+    ver: 'v0.2.0', date: '2025-05-13',
     logs: [
       {type:'add', text:'召喚・呪文・場に出る、全アクションにバーンエフェクト追加'},
       {type:'fix', text:'ティンパニ召喚時にエフェクトが出ない問題を修正'},
@@ -955,7 +1083,7 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.1.1', date: '2025-05-13',
+    ver: 'v0.1.1', date: '2025-05-13',
     logs: [
       {type:'fix', text:'アビスラッシュをプレイヤーのみ攻撃可に修正'},
       {type:'fix', text:'ジャガイスト：攻撃したらターン終了時山札の下に修正'},
@@ -964,7 +1092,7 @@ var VERSION_LOG = [
     ]
   },
   {
-    ver: 'v1.1.0', date: '2025-05-13',
+    ver: 'v0.1.0', date: '2025-05-13',
     logs: [
       {type:'add', text:'デッキ管理・保存機能'},
       {type:'add', text:'墓地詠唱・アビスラッシュ UI'},
@@ -1279,6 +1407,13 @@ function goTitle(){
 
 /* ══ ゲーム初期化 ══ */
 function initGame(){
+  // ロック関連フラグをリセット
+  G_triggerQueue = [];
+  G_triggerQueueOnComplete = null;
+  G_triggerResolving = false;
+  G_fxRunning = false;
+  G_popupWaiting = false;
+
   var md=buildDeck(), od=buildDeck();
   var msh=md.splice(md.length-5,5);
   var osh=od.splice(od.length-5,5);
@@ -1316,6 +1451,7 @@ function myDraw(silent){
 /* ══ フェイズ ══ */
 var G_chargeTimer=null;
 function nextPhase(){
+  if(isLocked()) return;
   if(G.over) return;
   G.phase++;
   if(G.phase>=5){endTurn();return;}
@@ -1350,6 +1486,7 @@ function runPhase(){
   if(p===4){setPhase('攻撃');setPBtn('ターン終了▶');log('s','攻撃：クリーチャーで攻撃できます');G.sel=null;render();updateBtns();return;}
 }
 function endTurn(){
+  if(isLocked()) return;
   if(G.over) return;
   G.sel=null; G.costBonus=0;
 
@@ -1642,6 +1779,7 @@ function updateBtns(){
   var bAtk=document.getElementById('b-atk'); if(bAtk) bAtk.disabled=!canAtk;
 }
 function doAbyssRushCard(sel){
+  if(isLocked()) return;
   if(G.phase!==3){log('l','メインフェイズ以外ではアビスラッシュできません');return;}
   G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
   var instance=makeCard(sel, {abyssRush:true, endOfTurn:'toBottom'});
@@ -1654,6 +1792,7 @@ function doAbyssRushCard(sel){
   render(); updateBtns();
 }
 function doGraveSpellCard(sel){
+  if(isLocked()) return;
   if(G.phase!==3){log('l','メインフェイズ以外では使えません');return;}
   var ec=G_testMode?0:Math.max(0,sel.cost-G.costBonus);
   var av=G_testMode?999:0; if(!G_testMode) for(var i=0;i<G.myMana.length;i++) if(!G.myMana[i].tapped) av++;
@@ -1672,6 +1811,7 @@ function doGraveSpellCard(sel){
   render(); updateBtns();
 }
 function doAbyssRush(){
+  if(isLocked()) return;
   if(G.phase!==3){log('l','メインフェイズ以外ではアビスラッシュできません');return;}
   var rushable=G.grave.filter(function(x){return x.type==='creature'&&!x.usedAsSpell&&x.eff&&x.eff.indexOf('アビスラッシュ')!==-1;});
   if(rushable.length===0){log('l','墓地にアビスラッシュ持ちクリーチャーがいません');return;}
@@ -1694,6 +1834,7 @@ function doAbyssRush(){
   );
 }
 function doGraveSpell(){
+  if(isLocked()) return;
   if(G.phase!==3){log('l','メインフェイズ以外では使えません');return;}
   var spells=G.grave.filter(function(x){return x.type==='spell'&&x.eff&&x.eff.indexOf('墓地から唱えてもよい')!==-1;});
   if(spells.length===0){log('l','墓地に該当する呪文がありません');return;}
@@ -1732,6 +1873,7 @@ function chargeCardDirect(c){
   safeTimeout(function(){G.phase=3;runPhase();},350);
 }
 function playCardDirect(c, asSpell, ec){
+  if(isLocked()) return;
   if(G.phase!==3){log('l','メインフェイズ以外では使えません');return;}
   // マナを支払う
   var paid=0;
@@ -1745,6 +1887,7 @@ function playCardDirect(c, asSpell, ec){
     G.myBattle.push(instance);
     log('a','⚔️「'+c.name+'」召喚！（コスト'+ec+'）');
     fxFloat('召喚！','#88ff88');
+    render();
     enterFx(instance, function(){
       myEnteredEff(instance, 'summon');
     });
@@ -1883,9 +2026,12 @@ var CARD_EFFECTS = {
               if(G.oppHand.length>0){
                 var ri=Math.floor(Math.random()*G.oppHand.length);
                 var d=G.oppHand[ri];
-                discardFromHand(d, 'opp');
+                discardFromHand(d, 'opp', function(){
+                  log('w','💠 ベラドンナ：① 相手手札を1枚捨てさせた');
+                });
+              } else {
+                log('w','💠 ベラドンナ：① 相手手札を1枚捨てさせた');
               }
-              log('w','💠 ベラドンナ：① 相手手札を1枚捨てさせた');
             } else {
               var top=G.myDeck.pop(); var im=(top.civ==='m');
               G.myMana.push({civ:im?'nd':top.civ,tapped:im,name:top.name,id:top.id,cost:top.cost,pow:top.pow,type:top.type,icon:top.icon,eff:top.eff});
@@ -1910,8 +2056,7 @@ var CARD_EFFECTS = {
       if(crs.length===0){log('w','🌑 マーダン：相手手札にクリーチャーなし');done();return;}
       if(G.oppHand.length===1&&crs.length===1){
         log('w','🌑 マーダン：「'+crs[0].name+'」を捨てさせた');
-        discardFromHand(crs[0], 'opp');
-        done();return;
+        discardFromHand(crs[0], 'opp', done);return;
       }
       var allHand=G.oppHand.map(function(x){return Object.assign({},x,{_disabled:x.type!=='creature'});});
       showCardSelectPopup('深淵の壊炉 マーダン=ロウ',
@@ -1920,9 +2065,10 @@ var CARD_EFFECTS = {
         function(sel){
           if(sel){
             log('w','🌑 マーダン：「'+sel.name+'」を捨てさせた');
-            discardFromHand(sel, 'opp');
+            discardFromHand(sel, 'opp', done);
+          } else {
+            done();
           }
-          done();
         }
       );
     },
@@ -1977,8 +2123,7 @@ var CARD_EFFECTS = {
       var discardIdx=Math.floor(Math.random()*G.oppHand.length);
       var discarded=G.oppHand[discardIdx];
       log('w','🌑 テレス：相手ターン開始時「'+discarded.name+'」を捨てさせた');
-      discardFromHand(discarded, 'opp');
-      done();
+      discardFromHand(discarded, 'opp', done);
     },
     onOppSummon: function(c, ev, done){log('l','相手テレス：次の相手ターン開始時からハンデス発動');done();}
   },
@@ -2302,51 +2447,64 @@ var CARD_EFFECTS = {
         {label:'② コスト4以下の闇クリーチャーを墓地から出す',cls:''},
         {label:'③ 相手クリーチャー1体のパワーをこのターン-4000',cls:''},
       ];
-      function doKetsuChoice(choiceNum,cb){
-        showPopup('絶望と反魂と滅殺の決断',choiceNum+'回目の選択（同じものを選んでもよい）',ketsuOpts,function(ki){
-          if(ki===0){
-            if(G.oppHand.length>0){
-              var _di=Math.floor(Math.random()*G.oppHand.length);
-              var _dc=G.oppHand[_di];
-              log('w','🌑 決断①：相手手札「'+_dc.name+'」を捨てさせた');
-              discardFromHand(_dc, 'opp');
-            } else log('w','🌑 決断①：相手手札なし');
-          } else if(ki===1){
-            var dark4=G.grave.filter(function(x){return x.type==='creature'&&!x.usedAsSpell&&x.civ==='d'&&x.cost<=4;});
-            if(dark4.length===0){log('w','🌑 決断②：対象なし');cb();return;}
-            showCardSelectPopup('決断②','コスト4以下の闇クリーチャーを墓地から出す。',dark4,function(sel){
-              if(!sel){log('w','🌑 決断②：スキップ');cb();return;}
-              G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
-              var instance=makeCard(sel, {summoned:true});
-              G.myBattle.push(instance);
-              log('w','🌑 決断②：「'+sel.name+'」を墓地から召喚！');
-              graveFx(instance, function(){
-                myEnteredEff(instance, 'reani');cb();
-              });
-            },{skipLabel:'✋ 出さない'});
-            return;
-          } else {
-            if(G.oppBattle.length===0){log('w','🌑 決断③：相手クリーチャーなし');cb();return;}
-            showCardSelectPopup('決断③','相手クリーチャー1体のパワーをこのターン-4000する。',G.oppBattle,function(sel){
-              if(!sel){log('w','🌑 決断③：スキップ');cb();return;}
-              for(var i=0;i<G.oppBattle.length;i++){
-                if(G.oppBattle[i].uid===sel.uid){
-                  G.oppBattle[i].pow=Math.max(0,G.oppBattle[i].pow-4000);
-                  log('w','🌑 決断③：「'+sel.name+'」パワー-4000（→'+G.oppBattle[i].pow+'）');
-                  if(G.oppBattle[i].pow<=0){G.oppGrave.push(G.oppBattle[i]);G.oppBattle.splice(i,1);log('w','🌑 決断③：パワー0以下で破壊！');}
-                  break;
-                }
+
+      // 選択2回先に行う
+      showPopup('絶望と反魂と滅殺の決断','1回目の選択（同じものを選んでもよい）',ketsuOpts,function(ki1){
+        showPopup('絶望と反魂と滅殺の決断','2回目の選択（同じものを選んでもよい）',ketsuOpts,function(ki2){
+
+          // 効果を順番に処理するヘルパー
+          function doEffect(ki, cb){
+            if(ki===0){
+              if(G.oppHand.length>0){
+                var _di=Math.floor(Math.random()*G.oppHand.length);
+                var _dc=G.oppHand[_di];
+                log('w','🌑 決断①：相手手札「'+_dc.name+'」を捨てさせた');
+                discardFromHand(_dc, 'opp', cb);
+              } else {
+                log('w','🌑 決断①：相手手札なし');
+                cb();
               }
-              cb();
-            });
-            return;
+            } else if(ki===1){
+              var dark4=G.grave.filter(function(x){return x.type==='creature'&&!x.usedAsSpell&&x.civ==='d'&&x.cost<=4;});
+              if(dark4.length===0){log('w','🌑 決断②：対象なし');cb();return;}
+              showCardSelectPopup('決断②','コスト4以下の闇クリーチャーを墓地から出す。',dark4,function(sel){
+                if(!sel){log('w','🌑 決断②：スキップ');cb();return;}
+                G.grave=G.grave.filter(function(x){return x.uid!==sel.uid;});
+                var instance=makeCard(sel, {summoned:true});
+                G.myBattle.push(instance);
+                log('w','🌑 決断②：「'+sel.name+'」を墓地から召喚！');
+                render();
+                graveFx(instance, function(){
+                  myEnteredEff(instance, 'reani');
+                  cb();
+                });
+              },{skipLabel:'✋ 出さない'});
+            } else {
+              if(G.oppBattle.length===0){log('w','🌑 決断③：相手クリーチャーなし');cb();return;}
+              showCardSelectPopup('決断③','相手クリーチャー1体のパワーをこのターン-4000する。',G.oppBattle,function(sel){
+                if(!sel){log('w','🌑 決断③：スキップ');cb();return;}
+                for(var i=0;i<G.oppBattle.length;i++){
+                  if(G.oppBattle[i].uid===sel.uid){
+                    G.oppBattle[i].pow=Math.max(0,G.oppBattle[i].pow-4000);
+                    log('w','🌑 決断③：「'+sel.name+'」パワー-4000（→'+G.oppBattle[i].pow+'）');
+                    if(G.oppBattle[i].pow<=0){G.oppGrave.push(G.oppBattle[i]);G.oppBattle.splice(i,1);log('w','🌑 決断③：パワー0以下で破壊！');}
+                    break;
+                  }
+                }
+                cb();
+              });
+            }
           }
-          cb();
+
+          // 選択結果をテキスト順（番号順）にソートしてから処理
+          var choices = [ki1, ki2].sort(function(a,b){return a-b;});
+          doEffect(choices[0], function(){
+            doEffect(choices[1], function(){
+              render();
+            });
+          });
         });
-      }
-      doKetsuChoice(1,function(){doKetsuChoice(2,function(){
-        render();
-      });});
+      });
     }
   }
 
@@ -2375,20 +2533,22 @@ function fireEvent(eventType, eventData){
     var label = (eff[eventType+'_label']
       ? '「'+c.name+'」'+eff[eventType+'_label']
       : '「'+c.name+'」の誘発効果');
-    (function(card, effect, data, lbl){
+    // ターン開始/終了時効果は解決順選択をスキップ
+    var skipOrder = (eventType==='onTurnStart' || eventType==='onTurnEnd');
+    (function(card, effect, data, lbl, skip){
       queueTrigger(
         lbl,
         card.uid,
         function(done){
-          // 解決時点でまだ場にいるか確認
           if(G.myBattle.filter(function(x){return x.uid===card.uid;}).length===0){done();return;}
           flashCard(card.uid, function(){
             render();
             effect[eventType](card, data, done);
           });
-        }
+        },
+        {skipOrderSelect: skip}
       );
-    })(c, eff, eventData, label);
+    })(c, eff, eventData, label, skipOrder);
   }
 }
 /* ══ playType 定義 ══
@@ -2411,20 +2571,22 @@ var G_triggerQueue = [];
 var G_triggerQueueOnComplete = null; // キュー全解決後のコールバック
 var G_triggerResolving = false;      // キュー解決中フラグ
 
-function queueTrigger(label, cardUid, fn){
-  G_triggerQueue.push({label:label, cardUid:cardUid, fn:fn});
+function queueTrigger(label, cardUid, fn, opts){
+  G_triggerQueue.push({label:label, cardUid:cardUid, fn:fn, skipOrderSelect:!!(opts&&opts.skipOrderSelect)});
+}
+
+/* キューの先頭に割り込んで即実行（解決順選択をスキップ） */
+function queueTriggerNext(label, cardUid, fn){
+  G_triggerQueue.unshift({label:label, cardUid:cardUid, fn:fn, skipOrderSelect:true});
 }
 
 function resolveTriggerQueue(onComplete){
-  // onCompleteが渡されたら登録（上書き）
   if(onComplete) G_triggerQueueOnComplete = onComplete;
-  // 解決中なら積むだけでOK（done()後に自動で続きが走る）
   if(G_triggerResolving) return;
   _nextTrigger();
 }
 
 function _nextTrigger(){
-  // キューが空なら完了
   if(G_triggerQueue.length===0){
     G_triggerResolving = false;
     var cb = G_triggerQueueOnComplete;
@@ -2432,19 +2594,29 @@ function _nextTrigger(){
     if(cb) cb();
     return;
   }
+  // 先頭がskipOrderSelectなら即実行
+  if(G_triggerQueue[0].skipOrderSelect){
+    _execTrigger();
+    return;
+  }
   // 2つ以上同時誘発：解決順を選択
   if(G_triggerQueue.length>=2){
-    var choices=G_triggerQueue.map(function(e){return {label:e.label,cls:''};});
-    showPopup('効果の解決順を選択',
-      '複数の効果が同時に誘発しました。どちらから解決しますか？',
-      choices,
-      function(idx){
-        var chosen=G_triggerQueue.splice(idx,1)[0];
-        G_triggerQueue.unshift(chosen);
-        _execTrigger();
-      }
-    );
-    return;
+    // skipOrderSelectでないものだけ選択肢に出す
+    var selectable = G_triggerQueue.filter(function(e){return !e.skipOrderSelect;});
+    if(selectable.length>=2){
+      var choices=selectable.map(function(e){return {label:e.label,cls:''};});
+      showPopup('効果の解決順を選択',
+        '複数の効果が同時に誘発しました。どちらから解決しますか？',
+        choices,
+        function(idx){
+          var chosen=selectable[idx];
+          G_triggerQueue=G_triggerQueue.filter(function(e){return e!==chosen;});
+          G_triggerQueue.unshift(chosen);
+          _execTrigger();
+        }
+      );
+      return;
+    }
   }
   _execTrigger();
 }
@@ -2596,7 +2768,8 @@ function oppSummonEff(c){
    who: 'my'=自分の手札から / 'opp'=相手の手札から
    手札から墓地に移動し、fireEvent('onDiscard')を発火する
 */
-function discardFromHand(card, who){
+function discardFromHand(card, who, callback){
+  var cb = callback || function(){};
   if(who==='my'){
     G.myHand = G.myHand.filter(function(x){return x.uid!==card.uid;});
     G.grave.push(card);
@@ -2604,36 +2777,34 @@ function discardFromHand(card, who){
     G.oppHand = G.oppHand.filter(function(x){return x.uid!==card.uid;});
     G.oppGrave.push(card);
   }
-  // テレス以外のonDiscardはキューに積む
-  fireEvent('onDiscard', {card:card, who:who});
-  // テレスのドロー選択はその場で連鎖処理（UX簡略化）
-  if(who==='opp' && G.myDeck.length>0){
-    var teresuList = G.myBattle.filter(function(x){return x.id==='teresu';});
-    if(teresuList.length>0){
-      // テレス枚数分ドロー選択をキューに積む（連続で出る）
-      for(var ti=0; ti<teresuList.length; ti++){
-        (function(teresu){
-          queueTrigger(
-            '「'+teresu.name+'」相手が手札を捨てた。1枚引く？',
-            teresu.uid,
-            function(done){
-              if(G.myDeck.length===0){done();return;}
-              showPopup(
-                '謀遠 テレスコ=テレス',
-                '相手が手札を捨てた。1枚引く？',
-                [{label:'はい',cls:'yes'},{label:'いいえ',cls:'no'}],
-                function(ci){
-                  if(ci===0){ myDraw(true); log('w','🌑 テレス：1枚ドロー'); }
-                  else { log('w','🌑 テレス：ドローしない'); }
-                  done();
-                }
-              );
-            }
-          );
-        })(teresuList[ti]);
+  render();
+  // ハンデスFxを再生してからテレスのドロー選択・callback
+  discardFx(card, who, function(){
+    if(who==='opp'){
+      var teresuList = G.myBattle.filter(function(x){return x.id==='teresu';});
+      if(teresuList.length > 0 && G.myDeck.length > 0){
+        function doNextDraw(idx){
+          if(idx >= teresuList.length){ cb(); return; }
+          if(G.myDeck.length === 0){ cb(); return; }
+          var t = teresuList[idx];
+          flashCard(t.uid, function(){
+            showYesNo(
+              '謀遠 テレスコ=テレス',
+              '相手が手札を捨てた。1枚引く？',
+              function(yes){
+                if(yes){ myDraw(true); log('w','🌑 テレス：1枚ドロー'); }
+                else { log('w','🌑 テレス：ドローしない'); }
+                doNextDraw(idx+1);
+              }
+            );
+          });
+        }
+        doNextDraw(0);
+        return;
       }
     }
-  }
+    cb();
+  });
 }
 
 /* ══ アビス・メクレイド5 ══ */
@@ -2854,6 +3025,25 @@ function cancelCardSel(){
 var G_effPopupCallback=null;
 var G_effPopupSelected=null;
 
+var G_ynCallback = null;
+
+function showYesNo(title, desc, callback){
+  G_popupWaiting = true;
+  G_ynCallback = callback;
+  document.getElementById('yn-title').textContent = title;
+  document.getElementById('yn-desc').textContent = desc || '';
+  document.getElementById('yn-popup').className = 'open';
+}
+
+function confirmYesNo(yes){
+  document.getElementById('yn-popup').className = '';
+  G_popupWaiting = false;
+  var cb = G_ynCallback;
+  G_ynCallback = null;
+  if(cb) cb(yes);
+  render(); updateBtns();
+}
+
 function showPopup(title, desc, choices, callback){
   G_popupWaiting=true;
   render(); // effingクラスを反映
@@ -2897,6 +3087,7 @@ function confirmEffPopup(){
 }
 
 function doAttack(){
+  if(isLocked()) return;
   var c=null; for(var i=0;i<G.myBattle.length;i++) if(G.myBattle[i].uid===G.sel){c=G.myBattle[i];break;}
   if(!c||c.tapped) return;
 
@@ -3404,6 +3595,7 @@ function canCardAttack(c){
 function showBZActionPopup(c, cardEl){
   var pop=document.getElementById('card-action-popup');
   if(!pop) return;
+  if(isLocked()) return;
   pop.innerHTML='';
   G_popupOnClose=null;
 
@@ -3705,6 +3897,7 @@ function renderHand(){
 function showCardActionPopup(c, cardEl, onClose){
   var pop=document.getElementById('card-action-popup');
   if(!pop) return;
+  if(isLocked()) return;
   pop.innerHTML='';
   G_popupOnClose=onClose||null;
 
@@ -3791,7 +3984,12 @@ function bindDoubleTap(el, fn){
 }
 
 var G_popupOnClose=null;
-var G_popupWaiting=false; // ポップアップ表示中はtrue、ゲーム進行をブロック
+var G_fxRunning = false; // Fxアニメーション中フラグ
+
+/* ゲームアクションをロックすべき状態か判定 */
+function isLocked(){
+  return G_popupWaiting || G_triggerResolving || G_fxRunning;
+}
 var G_popupSourceUid=null; // 効果発動中のカードUID（黄色枠表示用）
 
 /* ══ エフェクト関数群 ══
@@ -3817,16 +4015,80 @@ function _doFx(c, callback, fxClass, defaultIcon){
   }
   void fx.offsetWidth;
   fx.className='active '+(fxClass||'');
-  function onEnd(){
+  G_fxRunning = true;
+  var finished = false;
+  function onEnd(e){
+    if(e && e.target !== fx) return; // 子要素のアニメーション終了は無視
+    if(finished) return;
+    finished = true;
     fx.removeEventListener('animationend',onEnd);
     fx.className='';
+    G_fxRunning = false;
     if(callback) callback();
   }
   fx.addEventListener('animationend',onEnd);
+  // フォールバック：1秒経っても発火しなければ強制完了
+  setTimeout(function(){ onEnd(null); }, 1000);
 }
 function enterFx(c, callback){ _doFx(c, callback, '',      '⚔️'); }
 function spellFx(c, callback){ _doFx(c, callback, 'spell', '💫'); }
 function graveFx(c, callback){ _doFx(c, callback, 'grave', '🌑'); }
+
+/* ハンデスFx：カードが中央に出て墓地へ吸い込まれる
+   card : 捨てられるカード
+   who  : 'my'=自分が捨てる / 'opp'=相手が捨てる
+   callback : アニメーション完了後のコールバック
+*/
+function discardFx(card, who, callback){
+  var cb = callback || function(){};
+  var el = document.getElementById('discard-fx-card');
+  if(!el){ cb(); return; }
+
+  // カード内容をセット
+  el.className='';
+  el.innerHTML='';
+  if(CARD_IMAGES[card.id]){
+    var img = document.createElement('img');
+    img.src = CARD_IMAGES[card.id];
+    img.alt = card.name;
+    el.appendChild(img);
+  } else {
+    el.textContent = card.icon || '🃏';
+  }
+
+  // 出現アニメーション
+  void el.offsetWidth;
+  el.className = 'appear';
+
+  // 出現完了後に吸い込みアニメーション
+  var suckClass = (who==='my') ? 'suck-my' : 'suck-opp';
+  var appearDone = false;
+  function onAppearEnd(e){
+    if(e.target !== el) return;
+    if(appearDone) return;
+    appearDone = true;
+    el.removeEventListener('animationend', onAppearEnd);
+    void el.offsetWidth;
+    el.className = suckClass;
+    function onSuckEnd(e2){
+      if(e2.target !== el) return;
+      el.removeEventListener('animationend', onSuckEnd);
+      el.className='';
+      el.innerHTML='';
+      cb();
+    }
+    el.addEventListener('animationend', onSuckEnd);
+    // フォールバック
+    setTimeout(function(){
+      el.className=''; el.innerHTML=''; cb();
+    }, 600);
+  }
+  el.addEventListener('animationend', onAppearEnd);
+  // フォールバック
+  setTimeout(function(){
+    if(!appearDone){ appearDone=true; el.className=''; el.innerHTML=''; cb(); }
+  }, 600);
+}
 
 /* 後方互換ラッパー */
 function playFx(c, callback, fxType){
