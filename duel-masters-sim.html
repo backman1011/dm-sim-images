@@ -173,6 +173,11 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .bzone{width:100%;height:100%;border:1px dashed;border-radius:10px;display:flex;align-items:center;justify-content:center;gap:4px;flex-wrap:nowrap;padding:4px;box-sizing:border-box;overflow:visible;}
 .bz-y{border-color:rgba(255,200,100,.25);background:rgba(255,180,50,.04);}
 .bz-o{border-color:rgba(150,100,255,.25);background:rgba(130,80,255,.04);}
+.bz-o .card{transform:rotate(180deg);}
+.bz-o .card.tap{transform:rotate(180deg) rotate(18deg);}
+/* 相手側：シールド・山札を180度回転 */
+.row-oshield .sh{transform:rotate(180deg);}
+.row-oshield .deck-card{transform:rotate(180deg);}
 .bzone:empty::before{content:attr(data-empty);color:rgba(255,255,255,.18);font-size:.55rem;}
 .bzone .card{width:58px;height:80px;flex-shrink:1;}
 
@@ -370,6 +375,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 .card.tap.sel{transform:rotate(18deg) translateY(-4px) scale(1.06);}
 .card.sealed{opacity:.3;filter:grayscale(.9);}
 .card.sealed::before{content:'🔒';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:1.2rem;z-index:2;}
+.seal-count{position:absolute;top:2px;right:2px;background:rgba(100,50,200,.9);color:#fff;font-size:.5rem;font-weight:700;border-radius:3px;padding:1px 3px;z-index:3;}
 /* 山札表示 */
 .deck-pile{
   display:flex;flex-direction:column;align-items:center;gap:3px;flex-shrink:0;
@@ -857,6 +863,36 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
    type: 'add'=緑 / 'fix'=赤 / 'chg'=青
 */
 var VERSION_LOG = [
+  {
+    ver: 'v0.12.1', date: '2026-05-15',
+    logs: [
+      {type:'fix', text:'封印ルールを正しく実装。コマンド種族が出ると封印解除・封印カードが墓地へ'},
+      {type:'chg', text:'makeCardにsealCards[]を追加。sealed状態はsealCards.length>0で自動計算'},
+      {type:'chg', text:'秩序の意志：自分の山札上1枚をsealCardsに追加する形に変更'},
+      {type:'fix', text:'runPhaseの誤った封印解除処理（ターン開始時）を削除'},
+      {type:'add', text:'封印カード枚数バッジ（🔒×N）をカード上に表示'},
+    ]
+  },
+  {
+    ver: 'v0.12.0', date: '2026-05-15',
+    logs: [
+      {type:'fix', text:'discardFx/drawFxのcb()二重呼び出しバグを修正。suckDone/outDoneフラグで1回のみ呼ばれるよう保証'},
+      {type:'fix', text:'myDrawをFx完了後に手札追加する順番に変更。Fx中に手札が増えないよう修正'},
+      {type:'fix', text:'テレスのハンデス後flashCardをdiscardFx後に移動。discardFx→flashCard→showYesNoの正しい順番に'},
+      {type:'fix', text:'onTurnStart/onTurnEndのキュートリガーでflashCardをスキップ。テレスのフラッシュ二重発生を修正'},
+      {type:'add', text:'showYesNo(title, desc, callback)を追加。横並びはい/いいえ＋場を見るボタン付きの汎用Yes/Noポップアップ'},
+      {type:'chg', text:'テレスのドロー選択をshowYesNoに変更'},
+      {type:'add', text:'drawFx(card, callback)を追加。山札からカードが手元に飛んでくるアニメーション'},
+      {type:'chg', text:'myDraw(silent, fx, callback)にfx引数を追加。フェーズドロー・テレスドロー時にFxを再生'},
+      {type:'chg', text:'ドローFxは裏面画像（cardback）を使用'},
+      {type:'add', text:'discardFx(card, who, callback)を追加。ハンデス時にカードが中央に出て墓地へ吸い込まれるアニメーション'},
+      {type:'chg', text:'discardFromHandでdiscardFxを呼ぶよう変更。全ハンデス処理で自動的に演出が入る'},
+      {type:'fix', text:'決断の効果処理順を修正。選択1回目→選択2回目→効果1→効果2→テキスト順で処理'},
+      {type:'chg', text:'相手側の山札・墓地・シールドの配置を修正。墓地/山札/シールドの順に変更'},
+      {type:'chg', text:'カードバック画像をclassic.jpgに差し替え（assets/images/cardback/classic.jpg）'},
+      {type:'chg', text:'山札にcardback画像を背景として設定。シールドimg要素にサイズ指定を追加'},
+    ]
+  },
   {
     ver: 'v0.11.8', date: '2026-05-14',
     logs: [
@@ -1491,12 +1527,16 @@ function initGame(){
 */
 function myDraw(silent, fx, callback){
   if(G.myDeck.length===0){endGame(false,'山札切れ');return;}
-  var c=G.myDeck.pop(); G.myHand.push(c);
+  var c=G.myDeck.pop();
   if(!silent) log('s','「'+c.name+'」をドロー');
   if(fx){
-    render();
-    drawFx(c, callback || function(){});
+    drawFx(c, function(){
+      G.myHand.push(c);
+      render();
+      if(callback) callback();
+    });
   } else {
+    G.myHand.push(c);
     if(callback) callback();
   }
 }
@@ -1517,16 +1557,6 @@ function runPhase(){
     for(var i=0;i<G.myBattle.length;i++){ G.myBattle[i].tapped=false; G.myBattle[i].summoned=false; G.myBattle[i].attacked=false; }
     for(var i=0;i<G.myMana.length;i++) G.myMana[i].tapped=false;
     G.charged=false; G.costBonus=0; G.turnCreatureCount=0; G.jagaisutoUsed=false;
-    // 封印解除：自分ターン開始時、封印中の相手クリーチャーの封印を1枚解除
-    // （封印カードは山札の上から置かれる想定だが、このシミュでは「封印は次のターン開始時に外れる」簡易実装）
-    var unsealed=[];
-    for(var i=0;i<G.oppBattle.length;i++){
-      if(G.oppBattle[i].sealed){
-        G.oppBattle[i].sealed=false;
-        unsealed.push(G.oppBattle[i].name);
-      }
-    }
-    if(unsealed.length>0) log('w','✨ 封印解除：「'+unsealed.join('」「')+'」の封印が外れた！');
     log('s','── ターン'+G.turn+' アンタップ ──'); render();
     safeTimeout(function(){G.phase=1;runPhase();},400); return;
   }
@@ -2005,8 +2035,14 @@ function makeCard(base, opts){
     abyssRush: opts.abyssRush || false,
     attacked:  opts.attacked  || false,
     endOfTurn: opts.endOfTurn || null,
+    sealCards: [],  // 封印に使われているカードのリスト（封印されたクリーチャー側に持つ）
     grantedAbilities: [], // [{ability:'マッハファイター', from:'uid'}, ...]
   };
+}
+
+/* sealed状態を更新（sealCardsが空かどうかで判定） */
+function updateSealed(card){
+  card.sealed = card.sealCards && card.sealCards.length > 0;
 }
 
 /* ══════════════════════════════════════════
@@ -2482,13 +2518,28 @@ var CARD_EFFECTS = {
       var targets=G.oppBattle.filter(function(x){return !x.sealed;});
       if(targets.length===0){log('w','✨ 秩序：封印可能なクリーチャーなし');return;}
       showCardSelectPopup('秩序の意志',
-        '相手のクリーチャーを1体選び封印する。\n（封印中そのクリーチャーは無視される）',
+        '相手のクリーチャーを1体選び封印する。',
         targets,
         function(sel){
-          if(!sel)return;
+          if(!sel) return;
           for(var i=0;i<G.oppBattle.length;i++){
-            if(G.oppBattle[i].uid===sel.uid){G.oppBattle[i].sealed=true;log('w','✨ 秩序：「'+sel.name+'」を封印！');break;}
+            if(G.oppBattle[i].uid===sel.uid){
+              // 自分の山札上1枚を封印カードとして使用
+              if(G.myDeck.length > 0){
+                var sealCard = G.myDeck.pop();
+                G.oppBattle[i].sealCards.push(sealCard);
+                updateSealed(G.oppBattle[i]);
+                log('w','✨ 秩序：「'+sel.name+'」を封印！（「'+sealCard.name+'」を裏向きに置いた）');
+              } else {
+                // 山札がない場合は封印カードなしで封印（山札切れ対策）
+                G.oppBattle[i].sealCards.push({id:'_seal',name:'封印',cost:0,pow:0,type:'spell',civ:'d',icon:'🔒',eff:''});
+                updateSealed(G.oppBattle[i]);
+                log('w','✨ 秩序：「'+sel.name+'」を封印！（山札なしのため代替封印）');
+              }
+              break;
+            }
           }
+          render();
         }
       );
     }
@@ -2590,20 +2641,27 @@ function fireEvent(eventType, eventData){
       : '「'+c.name+'」の誘発効果');
     // ターン開始/終了時効果は解決順選択をスキップ
     var skipOrder = (eventType==='onTurnStart' || eventType==='onTurnEnd');
-    (function(card, effect, data, lbl, skip){
+    // ターン開始/終了時はflashCardをスキップ（discardFx後にflashするため）
+    var skipFlash = (eventType==='onTurnStart' || eventType==='onTurnEnd');
+    (function(card, effect, data, lbl, skip, noFlash){
       queueTrigger(
         lbl,
         card.uid,
         function(done){
           if(G.myBattle.filter(function(x){return x.uid===card.uid;}).length===0){done();return;}
-          flashCard(card.uid, function(){
+          if(noFlash){
             render();
             effect[eventType](card, data, done);
-          });
+          } else {
+            flashCard(card.uid, function(){
+              render();
+              effect[eventType](card, data, done);
+            });
+          }
         },
         {skipOrderSelect: skip}
       );
-    })(c, eff, eventData, label, skipOrder);
+    })(c, eff, eventData, label, skipOrder, skipFlash);
   }
 }
 /* ══ playType 定義 ══
@@ -2789,6 +2847,20 @@ function myEnteredEff(c, playType){
   // 場にいる他のカードの誘発をチェック（ジャガイスト等）
   if(c.type==='creature'){
     fireEvent('onOtherEntered', {card:c, playType:playType});
+  }
+
+  // コマンド種族チェック：封印解除ルール
+  if(c.type==='creature' && c.race && c.race.indexOf('コマンド') !== -1){
+    var sealed = G.oppBattle.filter(function(x){ return x.sealCards && x.sealCards.length > 0; });
+    if(sealed.length > 0){
+      // 封印が複数ある場合は一番古いもの（先頭）を解除
+      var target = sealed[0];
+      var sealCard = target.sealCards.shift();
+      G.oppGrave.push(sealCard);
+      updateSealed(target);
+      log('w','✨ コマンド「'+c.name+'」：「'+target.name+'」の封印解除！（「'+sealCard.name+'」墓地へ）');
+      render();
+    }
   }
 
   // 常にresolveTriggerQueueを呼ぶ
@@ -3614,6 +3686,28 @@ function renderBZ(id,cards,mine){
       d.appendChild(pb);
     }
     wrap.appendChild(d);
+    // 封印カードを裏向きで重ねて表示
+    if(c.sealCards && c.sealCards.length > 0){
+      for(var si=0; si<c.sealCards.length; si++){
+        var sealEl = document.createElement('div');
+        sealEl.style.cssText = 'position:absolute;width:58px;height:80px;border-radius:7px;'
+          + 'top:'+(4 + si*4)+'px;left:'+(4 + si*4)+'px;'
+          + 'border:2px solid rgba(180,100,255,.7);'
+          + 'box-shadow:0 0 6px rgba(180,100,255,.5);'
+          + 'overflow:hidden;z-index:'+(10+si)+';';
+        if(CARD_IMAGES['cardback']){
+          var sealImg = document.createElement('img');
+          sealImg.src = CARD_IMAGES['cardback'];
+          sealImg.style.cssText = 'width:100%;height:100%;object-fit:cover;transform:rotate(180deg);';
+          sealEl.appendChild(sealImg);
+        } else {
+          sealEl.style.background = 'linear-gradient(135deg,#12122a,#1c1c3a)';
+          sealEl.style.cssText += 'display:flex;align-items:center;justify-content:center;font-size:.7rem;color:#fff;';
+          sealEl.textContent = '🔒';
+        }
+        wrap.appendChild(sealEl);
+      }
+    }
     var badges=mkBadges(c,mine);
     if(badges) d.appendChild(badges);
     // 自分バトルゾーン・攻撃フェーズのみアタックボタンを表示
@@ -4102,13 +4196,14 @@ function drawFx(card, callback){
 
   el.className='';
   el.innerHTML='';
-  if(card && CARD_IMAGES[card.id]){
+  // ドロー時は裏面画像を使う
+  if(CARD_IMAGES['cardback']){
     var img = document.createElement('img');
-    img.src = CARD_IMAGES[card.id];
-    img.alt = card.name;
+    img.src = CARD_IMAGES['cardback'];
+    img.alt = 'カード';
     el.appendChild(img);
   } else {
-    el.textContent = (card && card.icon) || '🃏';
+    el.textContent = '🃏';
   }
 
   void el.offsetWidth;
@@ -4122,14 +4217,17 @@ function drawFx(card, callback){
     el.removeEventListener('animationend', onInEnd);
     void el.offsetWidth;
     el.className = 'slide-out';
+    var outDone = false;
     function onOutEnd(e2){
       if(e2.target !== el) return;
+      if(outDone) return;
+      outDone = true;
       el.removeEventListener('animationend', onOutEnd);
       el.className=''; el.innerHTML='';
       cb();
     }
     el.addEventListener('animationend', onOutEnd);
-    setTimeout(function(){ el.className=''; el.innerHTML=''; cb(); }, 500);
+    setTimeout(function(){ if(!outDone){ outDone=true; el.className=''; el.innerHTML=''; cb(); } }, 500);
   }
   el.addEventListener('animationend', onInEnd);
   setTimeout(function(){
@@ -4173,21 +4271,21 @@ function discardFx(card, who, callback){
     el.removeEventListener('animationend', onAppearEnd);
     void el.offsetWidth;
     el.className = suckClass;
+    var suckDone = false;
     function onSuckEnd(e2){
       if(e2.target !== el) return;
+      if(suckDone) return;
+      suckDone = true;
       el.removeEventListener('animationend', onSuckEnd);
-      el.className='';
-      el.innerHTML='';
+      el.className=''; el.innerHTML='';
       cb();
     }
     el.addEventListener('animationend', onSuckEnd);
-    // フォールバック
     setTimeout(function(){
-      el.className=''; el.innerHTML=''; cb();
+      if(!suckDone){ suckDone=true; el.className=''; el.innerHTML=''; cb(); }
     }, 600);
   }
   el.addEventListener('animationend', onAppearEnd);
-  // フォールバック
   setTimeout(function(){
     if(!appearDone){ appearDone=true; el.className=''; el.innerHTML=''; cb(); }
   }, 600);
