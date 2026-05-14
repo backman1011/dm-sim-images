@@ -452,6 +452,7 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 /* ── シールド ── */
 .shields{display:flex;justify-content:center;gap:3px;flex-shrink:0;}
 .sh{width:34px;height:46px;border-radius:5px;border:2px solid rgba(100,100,180,.5);background:linear-gradient(135deg,#12122a,#1c1c3a);display:flex;align-items:center;justify-content:center;font-size:.85rem;transition:all .2s;overflow:hidden;position:relative;box-shadow:0 2px 6px rgba(0,0,0,.5);}
+.sh img{width:100%;height:100%;object-fit:cover;display:block;}
 .sh-i{border-color:rgba(120,120,220,.7);box-shadow:0 2px 8px rgba(80,80,200,.3),0 0 12px rgba(80,80,200,.15);padding:0;}
 .sh-i img{width:100%;height:100%;object-fit:cover;border-radius:3px;display:block;}
 .sh-b{background:rgba(20,5,5,.5);border-color:rgba(80,20,20,.6);opacity:.35;}
@@ -857,6 +858,12 @@ body{background:var(--bg);color:var(--txt);font-family:'Noto Sans JP',sans-serif
 */
 var VERSION_LOG = [
   {
+    ver: 'v0.11.8', date: '2026-05-14',
+    logs: [
+      {type:'chg', text:'カードバック画像をclassic.jpgに差し替え（assets/images/cardback/classic.jpg）'},
+    ]
+  },
+  {
     ver: 'v0.11.7', date: '2026-05-14',
     logs: [
       {type:'add', text:'drawFx(card, callback)を追加。山札からカードが手元に飛んでくるアニメーション'},
@@ -1173,7 +1180,7 @@ function closeVerModal(){
 }
 
 var CARD_IMAGES = {
-  cardback:"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA2MyA4OCI+CiAgPGRlZnM+CiAgICA8cmFkaWFsR3JhZGllbnQgaWQ9ImJnIiBjeD0iNTAlIiBjeT0iNTAlIiByPSI2MCUiPgogICAgICA8c3RvcCBvZmZzZXQ9IjAlIiBzdG9wLWNvbG9yPSIjMWEzYThhIi8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iIzA1MGQyZSIvPgogICAgPC9yYWRpYWxHcmFkaWVudD4KICAgIDxyYWRpYWxHcmFkaWVudCBpZD0iZ2xvdyIgY3g9IjUwJSIgY3k9IjUwJSIgcj0iNTAlIj4KICAgICAgPHN0b3Agb2Zmc2V0PSIwJSIgc3RvcC1jb2xvcj0iI2ZmZGQwMCIgc3RvcC1vcGFjaXR5PSIwLjkiLz4KICAgICAgPHN0b3Agb2Zmc2V0PSI2MCUiIHN0b3AtY29sb3I9IiNmZmFhMDAiIHN0b3Atb3BhY2l0eT0iMC42Ii8+CiAgICAgIDxzdG9wIG9mZnNldD0iMTAwJSIgc3RvcC1jb2xvcj0iI2ZmNjYwMCIgc3RvcC1vcGFjaXR5PSIwIi8+CiAgICA8L3JhZGlhbEdyYWRpZW50PgogIDwvZGVmcz4KICA8IS0tIOiDjOaZryAtLT4KICA8cmVjdCB3aWR0aD0iNjMiIGhlaWdodD0iODgiIHJ4PSI0IiBmaWxsPSJ1cmwoI2JnKSIvPgogIDwhLS0g5aSW5p6gIC0tPgogIDxyZWN0IHg9IjEuNSIgeT0iMS41IiB3aWR0aD0iNjAiIGhlaWdodD0iODUiIHJ4PSIzIiBmaWxsPSJub25lIiBzdHJva2U9IiMzMzU1Y2MiIHN0cm9rZS13aWR0aD0iMS41IiBvcGFjaXR5PSIwLjciLz4KICA8IS0tIOOCsOODreODvCAtLT4KICA8ZWxsaXBzZSBjeD0iMzEuNSIgY3k9IjQ0IiByeD0iMjIiIHJ5PSIyMiIgZmlsbD0idXJsKCNnbG93KSIgb3BhY2l0eT0iMC41Ii8+CiAgPCEtLSDjg6HjgqTjg7PjgrXjg7zjgq/jg6sgLS0+CiAgPGNpcmNsZSBjeD0iMzEuNSIgY3k9IjQ0IiByPSIxOCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZjYzAwIiBzdHJva2Utd2lkdGg9IjIuNSIgb3BhY2l0eT0iMC45Ii8+CiAgPGNpcmNsZSBjeD0iMzEuNSIgY3k9IjQ0IiByPSIxNCIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjZmZhYTAwIiBzdHJva2Utd2lkdGg9IjEiIG9wYWNpdHk9IjAuNiIvPgogIDwhLS0g5YaF5YG044Gu6KOF6aO+IC0tPgogIDxjaXJjbGUgY3g9IjMxLjUiIGN5PSI0NCIgcj0iNyIgZmlsbD0iI2ZmY2MwMCIgb3BhY2l0eT0iMC44NSIvPgogIDxjaXJjbGUgY3g9IjMxLjUiIGN5PSI0NCIgcj0iNCIgZmlsbD0iI2ZmZjhhYSIgb3BhY2l0eT0iMC45NSIvPgogIDwhLS0g44Kz44O844OK44O86KOF6aO+IC0tPgogIDxjaXJjbGUgY3g9IjgiIGN5PSI4IiByPSIyLjUiIGZpbGw9IiMzMzY2ZGQiIHN0cm9rZT0iIzY2OTlmZiIgc3Ryb2tlLXdpZHRoPSIwLjgiIG9wYWNpdHk9IjAuOCIvPgogIDxjaXJjbGUgY3g9IjU1IiBjeT0iOCIgcj0iMi41IiBmaWxsPSIjMzM2NmRkIiBzdHJva2U9IiM2Njk5ZmYiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjgiLz4KICA8Y2lyY2xlIGN4PSI4IiBjeT0iODAiIHI9IjIuNSIgZmlsbD0iIzMzNjZkZCIgc3Ryb2tlPSIjNjY5OWZmIiBzdHJva2Utd2lkdGg9IjAuOCIgb3BhY2l0eT0iMC44Ii8+CiAgPGNpcmNsZSBjeD0iNTUiIGN5PSI4MCIgcj0iMi41IiBmaWxsPSIjMzM2NmRkIiBzdHJva2U9IiM2Njk5ZmYiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjgiLz4KICA8IS0tIOS4iuS4i+ijhemjvuODqeOCpOODsyAtLT4KICA8bGluZSB4MT0iMTQiIHkxPSI2IiB4Mj0iNDkiIHkyPSI2IiBzdHJva2U9IiM0NDc3ZWUiIHN0cm9rZS13aWR0aD0iMC44IiBvcGFjaXR5PSIwLjYiLz4KICA8bGluZSB4MT0iMTQiIHkxPSI4MiIgeDI9IjQ5IiB5Mj0iODIiIHN0cm9rZT0iIzQ0NzdlZSIgc3Ryb2tlLXdpZHRoPSIwLjgiIG9wYWNpdHk9IjAuNiIvPgo8L3N2Zz4="
+  cardback:"https://backman1011.github.io/dm-simulator/assets/images/cardback/classic.jpg"
 };
 var DECK = [];
 var ABYSS_IDS = ['maardan','footless','teresu','aenumakua','tinpani','dommy','jagaisuto','abyssbell'];
@@ -2840,9 +2847,8 @@ function discardFromHand(card, who, callback){
               '謀遠 テレスコ=テレス',
               '相手が手札を捨てた。1枚引く？',
               function(yes){
-                if(yes){ myDraw(true); log('w','🌑 テレス：1枚ドロー'); }
-                else { log('w','🌑 テレス：ドローしない'); }
-                doNextDraw(idx+1);
+                if(yes){ myDraw(true, true, function(){ doNextDraw(idx+1); }); log('w','🌑 テレス：1枚ドロー'); }
+                else { log('w','🌑 テレス：ドローしない'); doNextDraw(idx+1); }
               }
             );
           });
@@ -3494,12 +3500,18 @@ function render(){
   if(_mdc){
     var mc=G.myDeck.length;
     _mdc.className='deck-card '+(mc===0?'thick-0':mc<=5?'thick-1':mc<=29?'thick-2':'thick-3');
+    if(CARD_IMAGES['cardback']) _mdc.style.backgroundImage='url('+CARD_IMAGES['cardback']+')';
+    _mdc.style.backgroundSize='cover';
+    _mdc.style.backgroundPosition='center';
   }
   var _mdcnt=document.getElementById('dcnt');if(_mdcnt)_mdcnt.textContent=G.myDeck.length;
   var _odc=document.getElementById('opp-deck-card');
   if(_odc){
     var oc=G.oppDeck.length;
     _odc.className='deck-card '+(oc===0?'thick-0':oc<=5?'thick-1':oc<=29?'thick-2':'thick-3');
+    if(CARD_IMAGES['cardback']) _odc.style.backgroundImage='url('+CARD_IMAGES['cardback']+')';
+    _odc.style.backgroundSize='cover';
+    _odc.style.backgroundPosition='center';
   }
   var _odcnt=document.getElementById('odcnt');if(_odcnt)_odcnt.textContent=G.oppDeck.length;
   document.getElementById('gcnt').textContent=G.grave.length;
